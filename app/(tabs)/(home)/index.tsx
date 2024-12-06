@@ -76,7 +76,7 @@ const HomeScreen = () => {
               return (
                 <PromotionCoinButton key={index + coin.item.id}>
                   <PromotionCoinTitleContainer>
-                    <PromotionCoinTitle>{coin.item.name}</PromotionCoinTitle>
+                    <PromotionCoinTitle>{coin.item.symbol}</PromotionCoinTitle>
                     <FireIcon source={{ url: coin.item.large }} />
                   </PromotionCoinTitleContainer>
                   <CoinPriceContainer>
