@@ -25,7 +25,7 @@ interface CoinWithPriceInterface {
   };
 }
 
-const CoinSearchScreen = () => {
+const CryptoSearchScreen = () => {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
 
@@ -336,4 +336,4 @@ const CryptoLogo = styled.Image`
 
 const CryptoPriceContainer = styled.View``;
 
-export default CoinSearchScreen;
+export default CryptoSearchScreen;

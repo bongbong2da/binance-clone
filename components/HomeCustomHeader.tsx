@@ -5,7 +5,7 @@ import { router } from "expo-router";
 
 const HomeCustomHeader = () => {
   const handlePressSearch = () => {
-    router.push("/(tabs)/(home)/CoinSearchScreen");
+    router.push("/(tabs)/(home)/CryptoSearchScreen");
   };
 
   return (

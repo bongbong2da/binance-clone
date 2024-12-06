@@ -12,7 +12,7 @@ const HomeTabs = () => {
         }}
       />
       <Stack.Screen
-        name={"CoinSearchScreen"}
+        name={"CryptoSearchScreen"}
         options={{
           headerShown: false,
         }}
