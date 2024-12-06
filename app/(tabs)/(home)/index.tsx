@@ -97,7 +97,7 @@ const HomeScreen = () => {
         <PromotionCoinsContainer>
           {promotionCoins.map((coin, index) => {
             return (
-              <PromotionCoinButton>
+              <PromotionCoinButton key={index + coin.title}>
                 <PromotionCoinTitleContainer>
                   <PromotionCoinTitle>{coin.title}</PromotionCoinTitle>
                   <FireIcon
