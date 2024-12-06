@@ -17,6 +17,12 @@ const HomeTabs = () => {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name={"CryptoViewScreen"}
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 };
