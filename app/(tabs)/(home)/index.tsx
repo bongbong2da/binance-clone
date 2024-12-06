@@ -3,78 +3,54 @@ import styled from "styled-components/native";
 import HomeCustomHeader from "@/components/HomeCustomHeader";
 import { Colors } from "@/constants/Colors";
 import { Text } from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 
 type FluctuationType = "positive" | "negative" | "neutral";
 
-interface PromotionCoinInterface {
-  title: string;
-  isFire?: boolean;
+interface CoinItemInterface {
+  id: string;
+  coin_id: number;
+  name: string;
+  symbol: string;
+  market_cap_rank: number;
+  data: {
+    price: number;
+    price_btc: string;
+    price_change_percentage_24h: {
+      [key: string]: number;
+    };
+  };
+  content: null;
+  market_cap: string;
+  market_cap_btc: string;
   price: number;
-  priceHint: string;
-  fluctuation: FluctuationType;
-  fluctuationAmount: number;
+  price_btc: string;
+  sparkline: string;
+  total_volume: string;
+  total_volume_btc: string;
+  large: string;
+  score: number;
+  slug: string;
+  small: string;
+  thumb: string;
 }
 
-const promotionCoins: PromotionCoinInterface[] = [
-  {
-    title: "BTC",
-    isFire: true,
-    price: 45000,
-    priceHint: "$45000",
-    fluctuation: "negative",
-    fluctuationAmount: 0.6,
-  },
-  {
-    title: "ETH",
-    isFire: true,
-    price: 3000,
-    priceHint: "$3000",
-    fluctuation: "positive",
-    fluctuationAmount: 0.6,
-  },
-  {
-    title: "BNB",
-    isFire: true,
-    price: 500,
-    priceHint: "$500",
-    fluctuation: "positive",
-    fluctuationAmount: 0.6,
-  },
-  {
-    title: "ADA",
-    isFire: true,
-    price: 2.5,
-    priceHint: "$2.5",
-    fluctuation: "neutral",
-    fluctuationAmount: 0,
-  },
-  {
-    title: "SOL",
-    isFire: true,
-    price: 150,
-    priceHint: "$150",
-    fluctuation: "positive",
-    fluctuationAmount: 0.6,
-  },
-  {
-    title: "DOGE",
-    isFire: true,
-    price: 0.3,
-    priceHint: "$0.3",
-    fluctuation: "positive",
-    fluctuationAmount: 0.6,
-  },
-];
-
 const HomeScreen = () => {
-  const getFluctuationSymbol = (fluctuation: FluctuationType) => {
-    if (fluctuation === "positive") {
-      return "+";
-    } else if (fluctuation === "negative") {
-      return "-";
-    } else {
-      return "";
-    }
+  const getExchangesQuery = useQuery({
+    queryKey: ["getTrendingCoins"],
+    queryFn: async () => {
+      const response = await axios.get(
+        process.env.EXPO_PUBLIC_GECKCO_API_URL + "/search/trending",
+      );
+      return response;
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const convertBTCtoUSD = (btc: string) => {
+    const btcToUsd = Number(btc) * 98392.53;
+    return btcToUsd.toFixed(5);
   };
 
   return (
@@ -95,28 +71,38 @@ const HomeScreen = () => {
           </PromotionButton>
         </PromotionContainer>
         <PromotionCoinsContainer>
-          {promotionCoins.map((coin, index) => {
-            return (
-              <PromotionCoinButton key={index + coin.title}>
-                <PromotionCoinTitleContainer>
-                  <PromotionCoinTitle>{coin.title}</PromotionCoinTitle>
-                  <FireIcon
-                    source={require("@/assets/images/icons/fire.png")}
-                  />
-                </PromotionCoinTitleContainer>
-                <CoinPriceContainer>
-                  <Text>{coin.price}</Text>
-                  <CoinPriceHintText>{coin.priceHint}</CoinPriceHintText>
-                </CoinPriceContainer>
-                <FluctuationContainer fluctuation={coin.fluctuation}>
-                  <FluctuationText>
-                    {getFluctuationSymbol(coin.fluctuation)}
-                    {coin.fluctuationAmount}%
-                  </FluctuationText>
-                </FluctuationContainer>
-              </PromotionCoinButton>
-            );
-          })}
+          {getExchangesQuery.data?.data?.coins?.map(
+            (coin: { item: CoinItemInterface }, index: number) => {
+              return (
+                <PromotionCoinButton key={index + coin.item.id}>
+                  <PromotionCoinTitleContainer>
+                    <PromotionCoinTitle>{coin.item.name}</PromotionCoinTitle>
+                    <FireIcon source={{ url: coin.item.large }} />
+                  </PromotionCoinTitleContainer>
+                  <CoinPriceContainer>
+                    <Text>{convertBTCtoUSD(coin.item.price_btc)}</Text>
+                    <CoinPriceHintText>
+                      ${convertBTCtoUSD(coin.item.price_btc)}
+                    </CoinPriceHintText>
+                  </CoinPriceContainer>
+                  <FluctuationContainer
+                    fluctuation={
+                      Number(coin.item.data.price_change_percentage_24h.usd) > 0
+                        ? "positive"
+                        : "negative"
+                    }
+                  >
+                    <FluctuationText numberOfLines={1}>
+                      {coin.item.data.price_change_percentage_24h.usd.toFixed(
+                        2,
+                      )}
+                      %
+                    </FluctuationText>
+                  </FluctuationContainer>
+                </PromotionCoinButton>
+              );
+            },
+          )}
           <ViewMoreButton>
             <ViewMoreText>View 350+ Coins</ViewMoreText>
           </ViewMoreButton>
@@ -131,7 +117,7 @@ const Container = styled.SafeAreaView`
   background-color: white;
 `;
 
-const ContentContainer = styled.View``;
+const ContentContainer = styled.ScrollView``;
 
 const PromotionContainer = styled.ImageBackground`
   padding: 30px 16px;
@@ -184,7 +170,6 @@ const PromotionCoinTitle = styled.Text``;
 const FireIcon = styled.Image`
   width: 14px;
   height: 14px;
-  tint-color: ${Colors.light.secondaryTint};
 `;
 
 const CoinPriceContainer = styled.View`
@@ -200,7 +185,7 @@ const CoinPriceHintText = styled.Text`
 const FluctuationContainer = styled.View<{
   fluctuation: FluctuationType;
 }>`
-  width: 70px;
+  width: 80px;
   background-color: ${({ fluctuation }) =>
     fluctuation === "positive"
       ? Colors.positiveCandleColor
@@ -211,13 +196,12 @@ const FluctuationContainer = styled.View<{
   border-radius: 6px;
   align-items: center;
   justify-content: center;
-  align-self: flex-start;
   gap: 4px;
 `;
 
 const FluctuationText = styled.Text`
   color: white;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: bold;
 `;
 
