@@ -12,6 +12,7 @@ import "react-native-reanimated";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RecoilRoot } from "recoil";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -36,13 +37,15 @@ const RootLayout = () => {
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <QueryClientProvider client={queryClient}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="+not-found" />
-        </Stack>
-        <StatusBar style="auto" />
-      </QueryClientProvider>
+      <RecoilRoot>
+        <QueryClientProvider client={queryClient}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+          <StatusBar style="auto" />
+        </QueryClientProvider>
+      </RecoilRoot>
     </ThemeProvider>
   );
 };
