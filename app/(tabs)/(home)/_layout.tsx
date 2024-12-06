@@ -11,6 +11,7 @@ const HomeTabs = () => {
           headerShown: false,
         }}
       />
+      <Stack.Screen name={"CoinSearchScreen"} />
     </Stack>
   );
 };
