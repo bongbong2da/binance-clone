@@ -98,7 +98,7 @@ const HomeScreen = () => {
                 <PromotionCoinButton key={index + coin.item.id}>
                   <PromotionCoinTitleContainer>
                     <PromotionCoinTitle>{coin.item.symbol}</PromotionCoinTitle>
-                    <FireIcon source={{ url: coin.item.large }} />
+                    <CryptoLogoImage source={{ uri: coin.item.large }} />
                   </PromotionCoinTitleContainer>
                   <CoinPriceContainer>
                     <Text>{convertBTCtoUSD(coin.item.price_btc)}</Text>
@@ -188,7 +188,7 @@ const PromotionCoinTitleContainer = styled.View`
 
 const PromotionCoinTitle = styled.Text``;
 
-const FireIcon = styled.Image`
+const CryptoLogoImage = styled.Image`
   width: 14px;
   height: 14px;
 `;
