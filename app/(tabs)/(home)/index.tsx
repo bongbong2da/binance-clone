@@ -162,6 +162,7 @@ const PromotionCoinsContainer = styled.View`
   padding: 0 16px;
   border-bottom-width: 0.5px;
   border-color: #e8e8e8;
+  gap: 12px;
 `;
 
 const PromotionCoinButton = styled.Pressable`
