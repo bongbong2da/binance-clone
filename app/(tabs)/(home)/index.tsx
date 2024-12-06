@@ -8,6 +8,7 @@ import axios from "axios";
 import { useNavigation } from "expo-router";
 import { useRecoilState } from "recoil";
 import { tabBarVisibleAtom } from "@/recoil/atoms/UIAtoms";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 type FluctuationType = "positive" | "negative" | "neutral";
 
@@ -40,7 +41,7 @@ interface CoinItemInterface {
 }
 
 const HomeScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const [tabBarVisible, setTabBarVisible] = useRecoilState(tabBarVisibleAtom);
 
   const getExchangesQuery = useQuery({
@@ -57,6 +58,12 @@ const HomeScreen = () => {
   const convertBTCtoUSD = (btc: string) => {
     const btcToUsd = Number(btc) * 98392.53;
     return btcToUsd.toFixed(5);
+  };
+
+  const handlePressCrypto = (crypto: CoinItemInterface) => {
+    navigation.push("CryptoViewScreen", {
+      cryptoId: crypto.id,
+    });
   };
 
   useEffect(() => {
@@ -95,7 +102,10 @@ const HomeScreen = () => {
           {getExchangesQuery.data?.data?.coins?.map(
             (coin: { item: CoinItemInterface }, index: number) => {
               return (
-                <PromotionCoinButton key={index + coin.item.id}>
+                <PromotionCoinButton
+                  key={index + coin.item.id}
+                  onPress={() => handlePressCrypto(coin.item)}
+                >
                   <PromotionCoinTitleContainer>
                     <PromotionCoinTitle>{coin.item.symbol}</PromotionCoinTitle>
                     <CryptoLogoImage source={{ uri: coin.item.large }} />
