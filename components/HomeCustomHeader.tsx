@@ -1,8 +1,13 @@
 import React from "react";
 import styled from "styled-components/native";
 import { Colors } from "@/constants/Colors";
+import { router } from "expo-router";
 
 const HomeCustomHeader = () => {
+  const handlePressSearch = () => {
+    router.push("/(tabs)/(home)/CoinSearchScreen");
+  };
+
   return (
     <Container>
       <LogoButton>
@@ -10,7 +15,7 @@ const HomeCustomHeader = () => {
           source={require("@/assets/images/icons/binance-icon-light.png")}
         />
       </LogoButton>
-      <SearchButton>
+      <SearchButton onPress={handlePressSearch}>
         <SearchIconImage source={require("@/assets/images/icons/search.png")} />
         <SearchPromotionText>🔥 BNB</SearchPromotionText>
       </SearchButton>
