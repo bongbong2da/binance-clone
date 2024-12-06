@@ -6,6 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ActivityIndicator, Pressable, Text } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 interface CoinInterface {
   api_symbol: string;
@@ -26,7 +27,7 @@ interface CoinWithPriceInterface {
 }
 
 const CryptoSearchScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const queryClient = useQueryClient();
 
   const [currentSearchKeyword, setCurrentSearchKeyword] = useState<string>("");
@@ -127,6 +128,10 @@ const CryptoSearchScreen = () => {
       setSearchHistory(newKeywords);
       AsyncStorage.setItem("coin_search_keywords", newKeywords.join(","));
     }
+
+    navigation.push("CryptoViewScreen", {
+      cryptoId: coin.id,
+    });
   };
 
   const handlePressHistoryKeyword = (keyword: string) => {
