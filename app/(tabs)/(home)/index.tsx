@@ -1,10 +1,13 @@
-import React from "react";
+import React, { useEffect } from "react";
 import styled from "styled-components/native";
 import HomeCustomHeader from "@/components/HomeCustomHeader";
 import { Colors } from "@/constants/Colors";
 import { Text } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import { useNavigation } from "expo-router";
+import { useRecoilState } from "recoil";
+import { tabBarVisibleAtom } from "@/recoil/atoms/UIAtoms";
 
 type FluctuationType = "positive" | "negative" | "neutral";
 
@@ -37,6 +40,9 @@ interface CoinItemInterface {
 }
 
 const HomeScreen = () => {
+  const navigation = useNavigation();
+  const [tabBarVisible, setTabBarVisible] = useRecoilState(tabBarVisibleAtom);
+
   const getExchangesQuery = useQuery({
     queryKey: ["getTrendingCoins"],
     queryFn: async () => {
@@ -52,6 +58,21 @@ const HomeScreen = () => {
     const btcToUsd = Number(btc) * 98392.53;
     return btcToUsd.toFixed(5);
   };
+
+  useEffect(() => {
+    const onFocus = navigation.addListener("focus", () => {
+      setTabBarVisible(true);
+    });
+
+    const onBlur = navigation.addListener("blur", () => {
+      setTabBarVisible(false);
+    });
+
+    return () => {
+      onFocus();
+      onBlur();
+    };
+  }, []);
 
   return (
     <Container>
