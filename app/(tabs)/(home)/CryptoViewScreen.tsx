@@ -97,7 +97,7 @@ const CryptoViewScreen = () => {
   const [currentVolumeChart, setCurrentVolumeChart] = useState<any[]>([]);
 
   const getCoinQuery = useQuery<CoinDetails>({
-    queryKey: ["getCoin"],
+    queryKey: ["getCoin", cryptoId],
     queryFn: async () => {
       const response = await axios.get(
         process.env.EXPO_PUBLIC_GECKCO_API_URL + `/coins/${cryptoId}`,
