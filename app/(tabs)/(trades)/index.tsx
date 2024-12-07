@@ -238,10 +238,9 @@ const TradesScreen = () => {
     setOrderList([]);
   };
 
-  const renderOrderItem = (item: any) => {
-    const order = item.item as OrderInterface;
+  const renderOrderItem = (order: OrderInterface, index: number) => {
     return (
-      <OrderRowContainer>
+      <OrderRowContainer key={index + order.createdAt.toLocaleDateString()}>
         <OrderRowHeaderContainer>
           <OrderHeaderLeftContainer>
             <OrderSymbolText>
@@ -470,14 +469,16 @@ const TradesScreen = () => {
               <Text>Cancel All</Text>
             </CancelButton>
           </OrderListTitleContainer>
-          <OrderList
-            contentContainerStyle={{
-              gap: 16,
-            }}
-            data={orderList}
-            renderItem={renderOrderItem}
-            keyExtractor={(item, index) => index.toString()}
-          />
+          <OrderListScrollView>
+            {orderList.map((order, index) => {
+              return renderOrderItem(order, index);
+            })}
+            {orderList.length === 0 && (
+              <OrderEmptyContainer>
+                <Text>No Orders</Text>
+              </OrderEmptyContainer>
+            )}
+          </OrderListScrollView>
         </OrderListContainer>
       </ScrollWrapper>
       <BottomSheetModal
@@ -826,9 +827,10 @@ const OrderListTitleText = styled.Text`
   font-size: 16px;
 `;
 
-const OrderList = styled.FlatList`
+const OrderListScrollView = styled.View`
   flex: 1;
   padding: 0 16px 32px 16px;
+  gap: 16px;
 `;
 
 const OrderRowContainer = styled.View``;
@@ -892,6 +894,13 @@ const CancelButton = styled.Pressable`
   justify-content: center;
   background-color: #ededed;
   border-radius: 8px;
+`;
+
+const OrderEmptyContainer = styled.View`
+  flex: 1;
+  padding: 32px;
+  align-items: center;
+  justify-content: center;
 `;
 
 export default TradesScreen;
