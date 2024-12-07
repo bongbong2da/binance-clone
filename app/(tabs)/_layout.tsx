@@ -7,11 +7,21 @@ const TabLayout = () => {
   const isHide = useRecoilValue(tabBarVisibleAtom);
 
   return (
-    <Tabs>
+    <Tabs initialRouteName={"(home)"}>
       <Tabs.Screen
         name="(home)"
         options={{
           title: "Home",
+          headerShown: false,
+          tabBarStyle: {
+            display: isHide ? "flex" : "none",
+          },
+        }}
+      />
+      <Tabs.Screen
+        name="(trades)"
+        options={{
+          title: "Trades",
           headerShown: false,
           tabBarStyle: {
             display: isHide ? "flex" : "none",
