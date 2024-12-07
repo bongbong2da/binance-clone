@@ -50,7 +50,7 @@ const TradesScreen = () => {
   >([]);
 
   const [avblUSDT, setAvblUSDT] = useState(500);
-  const [avblBTC, setAvblBTC] = useState(0.1);
+  const [avblCrypto, setAvblCrypto] = useState(0.1);
   const [currentCryptoId, setCurrentCryptoId] = useState<string>("solana");
   const [currentTradeMode, setCurrentTradeMode] = useState<TradeMode>("Buy");
   const [currentTradeType, setCurrentTradeType] = useState<TradeType>("Market");
@@ -175,7 +175,7 @@ const TradesScreen = () => {
     if (currentTradeMode === "Buy") {
       amount = avblUSDT * (percentage / 100);
     } else {
-      amount = avblBTC * (percentage / 100);
+      amount = avblCrypto * (percentage / 100);
     }
     setCurrencyAmount(amount.toFixed(4));
   };
@@ -186,10 +186,10 @@ const TradesScreen = () => {
 
     if (currentTradeMode === "Buy") {
       setAvblUSDT(avblUSDT - Number(currencyAmount));
-      setAvblBTC(avblBTC + Number(currencyAmount) / targetPrice);
+      setAvblCrypto(avblCrypto + Number(currencyAmount) / targetPrice);
     } else {
       setAvblUSDT(avblUSDT + Number(currencyAmount) * targetPrice);
-      setAvblBTC(avblBTC - Number(currencyAmount));
+      setAvblCrypto(avblCrypto - Number(currencyAmount));
     }
 
     const order: OrderInterface = {
@@ -206,6 +206,36 @@ const TradesScreen = () => {
   const handlePressTradeType = (type: TradeType) => {
     setCurrentTradeType(type);
     bottomSheetModalRef.current?.dismiss();
+  };
+
+  const handleCancelOrder = (order: OrderInterface) => {
+    const newOrderList = orderList.filter((item) => item !== order);
+
+    if (order.tradeMode === "Buy") {
+      setAvblUSDT(avblUSDT + order.amount);
+    } else {
+      setAvblCrypto(avblCrypto + order.amount);
+    }
+
+    setOrderList(newOrderList);
+  };
+
+  const handleCancelAllOrders = () => {
+    let currentAvblUSDT = avblUSDT;
+    let currentAvblCrypto = avblCrypto;
+
+    orderList.forEach((order) => {
+      if (order.tradeMode === "Buy") {
+        currentAvblUSDT += order.amount;
+      } else {
+        currentAvblCrypto += order.amount;
+      }
+    });
+
+    setAvblUSDT(currentAvblUSDT);
+    setAvblCrypto(currentAvblCrypto);
+
+    setOrderList([]);
   };
 
   const renderOrderItem = (item: any) => {
@@ -227,7 +257,7 @@ const TradesScreen = () => {
             </OrderTypeModeContainer>
           </OrderHeaderLeftContainer>
           <OrderHeaderRightContainer>
-            <CancelButton>
+            <CancelButton onPress={() => handleCancelOrder(order)}>
               <Text>Cancel</Text>
             </CancelButton>
           </OrderHeaderRightContainer>
@@ -404,7 +434,7 @@ const TradesScreen = () => {
                 <CurrencyHintValueText>
                   {currentTradeMode === "Buy"
                     ? avblUSDT.toFixed(2)
-                    : avblBTC.toFixed(2)}{" "}
+                    : avblCrypto.toFixed(2)}{" "}
                   {currentTradeMode === "Buy"
                     ? "USDT"
                     : getCoinQuery.data?.symbol.toUpperCase()}
@@ -436,7 +466,7 @@ const TradesScreen = () => {
         <OrderListContainer>
           <OrderListTitleContainer>
             <OrderListTitleText>Open Orders</OrderListTitleText>
-            <CancelButton>
+            <CancelButton onPress={handleCancelAllOrders}>
               <Text>Cancel All</Text>
             </CancelButton>
           </OrderListTitleContainer>
@@ -856,7 +886,7 @@ const OrderFooterValueText = styled.Text`
   font-size: 14px;
 `;
 
-const CancelButton = styled.View`
+const CancelButton = styled.Pressable`
   padding: 4px 8px;
   align-items: center;
   justify-content: center;
