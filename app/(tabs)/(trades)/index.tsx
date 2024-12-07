@@ -24,6 +24,7 @@ interface OrderInterface {
   amount: number;
   tradeMode: TradeMode;
   tradeType: TradeType;
+  createdAt: Date;
 }
 
 interface TradePriceItem {
@@ -57,6 +58,8 @@ const TradesScreen = () => {
   const [currencyAmount, setCurrencyAmount] = useState<string>("");
   const [isSliding, setIsSliding] = useState<boolean>(false);
   const [slideValue, setSlideValue] = useState<number>(0);
+
+  const [orderList, setOrderList] = useState<OrderInterface[]>([]);
 
   const getCoinQuery = useQuery<GeckoCoinDetail>({
     queryKey: ["getCoin", currentCryptoId],
@@ -194,12 +197,53 @@ const TradesScreen = () => {
       amount: Number(currencyAmount),
       tradeMode: currentTradeMode,
       tradeType: currentTradeType,
+      createdAt: new Date(),
     };
+
+    setOrderList([...orderList, order]);
   };
 
   const handlePressTradeType = (type: TradeType) => {
     setCurrentTradeType(type);
     bottomSheetModalRef.current?.dismiss();
+  };
+
+  const renderOrderItem = (item: any) => {
+    const order = item.item as OrderInterface;
+    return (
+      <OrderRowContainer>
+        <OrderRowHeaderContainer>
+          <OrderHeaderLeftContainer>
+            <OrderSymbolText>
+              {getCoinQuery?.data?.symbol?.toUpperCase()}/USDT
+            </OrderSymbolText>
+            <OrderTypeModeContainer>
+              <OrderTypeModeText tradeType={order.tradeType}>
+                {order.tradeType} / {order.tradeMode}
+              </OrderTypeModeText>
+              <OrderDateText>
+                {order.createdAt.toLocaleDateString()}
+              </OrderDateText>
+            </OrderTypeModeContainer>
+          </OrderHeaderLeftContainer>
+          <OrderHeaderRightContainer>
+            <CancelButton>
+              <Text>Cancel</Text>
+            </CancelButton>
+          </OrderHeaderRightContainer>
+        </OrderRowHeaderContainer>
+        <OrderFooterContainer>
+          <OrderFooterRow>
+            <OrderFooterLabel>Filed / Amount</OrderFooterLabel>
+            <OrderFooterValueText>0 / {order.amount}</OrderFooterValueText>
+          </OrderFooterRow>
+          <OrderFooterRow>
+            <OrderFooterLabel>Price</OrderFooterLabel>
+            <OrderFooterValueText>{order.price}</OrderFooterValueText>
+          </OrderFooterRow>
+        </OrderFooterContainer>
+      </OrderRowContainer>
+    );
   };
 
   useEffect(() => {
@@ -303,6 +347,7 @@ const TradesScreen = () => {
                     ? "Market Price"
                     : String(targetPrice)
                 }
+                onChangeText={(text) => setTargetPrice(Number(text))}
                 keyboardType="number-pad"
               />
             </TargetPriceContainer>
@@ -388,30 +433,46 @@ const TradesScreen = () => {
             </ActionButtonContainer>
           </OrderContainer>
         </ContentContainer>
-        <BottomSheetModal
-          ref={bottomSheetModalRef}
-          enableDynamicSizing
-          backdropComponent={(props) => {
-            return (
-              <BottomSheetBackdrop
-                {...props}
-                appearsOnIndex={0}
-                disappearsOnIndex={-1}
-                opacity={0.4}
-              />
-            );
-          }}
-        >
-          <BottomSheetViewContainer>
-            <TradeTypeButton onPress={() => handlePressTradeType("Market")}>
-              <TradeTypeButtonText>Market</TradeTypeButtonText>
-            </TradeTypeButton>
-            <TradeTypeButton onPress={() => handlePressTradeType("Limit")}>
-              <TradeTypeButtonText>Limit</TradeTypeButtonText>
-            </TradeTypeButton>
-          </BottomSheetViewContainer>
-        </BottomSheetModal>
+        <OrderListContainer>
+          <OrderListTitleContainer>
+            <OrderListTitleText>Open Orders</OrderListTitleText>
+            <CancelButton>
+              <Text>Cancel All</Text>
+            </CancelButton>
+          </OrderListTitleContainer>
+          <OrderList
+            contentContainerStyle={{
+              gap: 16,
+            }}
+            data={orderList}
+            renderItem={renderOrderItem}
+            keyExtractor={(item, index) => index.toString()}
+          />
+        </OrderListContainer>
       </ScrollWrapper>
+      <BottomSheetModal
+        ref={bottomSheetModalRef}
+        enableDynamicSizing
+        backdropComponent={(props) => {
+          return (
+            <BottomSheetBackdrop
+              {...props}
+              appearsOnIndex={0}
+              disappearsOnIndex={-1}
+              opacity={0.4}
+            />
+          );
+        }}
+      >
+        <BottomSheetViewContainer>
+          <TradeTypeButton onPress={() => handlePressTradeType("Market")}>
+            <TradeTypeButtonText>Market</TradeTypeButtonText>
+          </TradeTypeButton>
+          <TradeTypeButton onPress={() => handlePressTradeType("Limit")}>
+            <TradeTypeButtonText>Limit</TradeTypeButtonText>
+          </TradeTypeButton>
+        </BottomSheetViewContainer>
+      </BottomSheetModal>
     </Container>
   );
 };
@@ -715,6 +776,92 @@ const TradeTypeButton = styled.Pressable`
 
 const TradeTypeButtonText = styled.Text`
   font-size: 20px;
+`;
+
+const OrderListContainer = styled.View`
+  flex: 1;
+  gap: 8px;
+`;
+
+const OrderListTitleContainer = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom-width: 0.5px;
+  border-color: #e3e3e3;
+  padding: 16px;
+`;
+
+const OrderListTitleText = styled.Text`
+  font-size: 16px;
+`;
+
+const OrderList = styled.FlatList`
+  flex: 1;
+  padding: 0 16px 32px 16px;
+`;
+
+const OrderRowContainer = styled.View``;
+
+const OrderRowHeaderContainer = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  border-color: #e3e3e3;
+  margin-bottom: 8px;
+`;
+
+const OrderSymbolText = styled.Text`
+  font-size: 16px;
+`;
+
+const OrderHeaderLeftContainer = styled.View`
+  gap: 8px;
+`;
+
+const OrderTypeModeContainer = styled.View`
+  flex-direction: row;
+  gap: 8px;
+`;
+const OrderTypeModeText = styled.Text<{ tradeType: TradeType }>`
+  font-size: 12px;
+  color: ${(props) =>
+    props.tradeType === "Market"
+      ? Colors.positiveCandleColor
+      : Colors.negativeCandleColor};
+`;
+
+const OrderDateText = styled.Text`
+  font-size: 12px;
+  color: #a1a1a1;
+`;
+
+const OrderHeaderRightContainer = styled.View``;
+
+const OrderFooterContainer = styled.View`
+  gap: 8px;
+`;
+
+const OrderFooterRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const OrderFooterLabel = styled.Text`
+  font-size: 14px;
+  color: #a1a1a1;
+`;
+
+const OrderFooterValueText = styled.Text`
+  font-size: 14px;
+`;
+
+const CancelButton = styled.View`
+  padding: 4px 8px;
+  align-items: center;
+  justify-content: center;
+  background-color: #ededed;
+  border-radius: 8px;
 `;
 
 export default TradesScreen;
