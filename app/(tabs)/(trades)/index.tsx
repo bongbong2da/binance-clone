@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components/native";
 import { useRecoilState } from "recoil";
 import { tabBarVisibleAtom } from "@/recoil/atoms/UIAtoms";
@@ -7,14 +7,56 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { GeckoCoinDetail } from "@/types/gecko/types";
 import { Colors } from "@/constants/Colors";
+import { Dimensions, Text } from "react-native";
+import { css } from "styled-components";
+import { Slider } from "@miblanchard/react-native-slider";
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
+
+type TradeMode = "Buy" | "Sell";
+type TradeType = "Market" | "Limit";
+
+interface OrderInterface {
+  price: "Market" | number;
+  amount: number;
+  tradeMode: TradeMode;
+  tradeType: TradeType;
+}
+
+interface TradePriceItem {
+  price: number;
+  amount: number;
+}
 
 const TradesScreen = () => {
   const navigation = useNavigation();
   const { cryptoId } = useLocalSearchParams();
   const router = useRouter();
+
   const [tabBarVisible, setTabBarVisible] = useRecoilState(tabBarVisibleAtom);
 
-  const [currentCryptoId, setCurrentCryptoId] = useState<string>("bitcoin");
+  const isInitialized = useRef<boolean>(false);
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+
+  const [dummyPositivePrices, setDummyPositivePrices] = useState<
+    TradePriceItem[]
+  >([]);
+  const [dummyNegativePrices, setDummyNegativePrices] = useState<
+    TradePriceItem[]
+  >([]);
+
+  const [avblUSDT, setAvblUSDT] = useState(500);
+  const [avblBTC, setAvblBTC] = useState(0.1);
+  const [currentCryptoId, setCurrentCryptoId] = useState<string>("solana");
+  const [currentTradeMode, setCurrentTradeMode] = useState<TradeMode>("Buy");
+  const [currentTradeType, setCurrentTradeType] = useState<TradeType>("Market");
+  const [targetPrice, setTargetPrice] = useState<number>(0);
+  const [currencyAmount, setCurrencyAmount] = useState<string>("");
+  const [isSliding, setIsSliding] = useState<boolean>(false);
+  const [slideValue, setSlideValue] = useState<number>(0);
 
   const getCoinQuery = useQuery<GeckoCoinDetail>({
     queryKey: ["getCoin", currentCryptoId],
@@ -23,11 +65,37 @@ const TradesScreen = () => {
         process.env.EXPO_PUBLIC_GECKCO_API_URL + `/coins/${currentCryptoId}`,
         {},
       );
+
+      if (!isInitialized.current) {
+        setTargetPrice(response.data.market_data.current_price.usd);
+        generateDummyPrices(
+          "positive",
+          response.data.market_data.current_price.usd,
+        );
+        generateDummyPrices(
+          "negative",
+          response.data.market_data.current_price.usd,
+        );
+      }
+
       return response.data;
     },
     retry: 1,
     staleTime: 1000 * 60 * 5,
   });
+
+  const handlePressPriceRow = (
+    type: "positive" | "negative",
+    price: number,
+  ) => {
+    if (type === "positive") {
+      setCurrentTradeMode("Buy");
+    } else {
+      setCurrentTradeMode("Sell");
+    }
+    setCurrentTradeType("Limit");
+    setTargetPrice(price);
+  };
 
   const renderPriceRow = (
     type: "positive" | "negative",
@@ -35,7 +103,11 @@ const TradesScreen = () => {
   ) => {
     return items.map((item, index) => {
       return (
-        <TradePriceRowContainer key={index + item.price} type={type}>
+        <TradePriceRowContainer
+          key={index + item.price}
+          type={type}
+          onPress={() => handlePressPriceRow(type, item.price)}
+        >
           <TradePriceText type={type}>{item.price}</TradePriceText>
           <TradePriceText type={type}>{item.amount}</TradePriceText>
         </TradePriceRowContainer>
@@ -64,7 +136,70 @@ const TradesScreen = () => {
       );
       prices.push({ price: Number(price.toFixed(2)), amount: randomAmount });
     }
-    return type === "positive" ? prices.reverse() : prices;
+
+    if (type === "positive") {
+      setDummyPositivePrices(prices);
+    } else {
+      setDummyNegativePrices(prices);
+    }
+  };
+
+  const handlePressTradeMode = (mode: TradeMode) => {
+    setCurrentTradeMode(mode);
+    setCurrencyAmount("");
+    setSlideValue(0);
+  };
+
+  const handlePressTradeTypeSelect = () => {
+    bottomSheetModalRef.current?.present();
+  };
+
+  const calculateMaxBuy = () => {
+    if (currentTradeMode === "Buy") {
+      const maxValue =
+        avblUSDT / Number(getCoinQuery.data?.market_data?.current_price?.usd);
+
+      return maxValue.toFixed(4);
+    } else {
+      return 0;
+    }
+  };
+
+  const handleChangeSlideValue = (value: number[]) => {
+    const percentage = value[0];
+    setSlideValue(percentage);
+    let amount = 0;
+    if (currentTradeMode === "Buy") {
+      amount = avblUSDT * (percentage / 100);
+    } else {
+      amount = avblBTC * (percentage / 100);
+    }
+    setCurrencyAmount(amount.toFixed(4));
+  };
+
+  const handleConfirmOrder = () => {
+    setCurrencyAmount("");
+    setSlideValue(0);
+
+    if (currentTradeMode === "Buy") {
+      setAvblUSDT(avblUSDT - Number(currencyAmount));
+      setAvblBTC(avblBTC + Number(currencyAmount) / targetPrice);
+    } else {
+      setAvblUSDT(avblUSDT + Number(currencyAmount) * targetPrice);
+      setAvblBTC(avblBTC - Number(currencyAmount));
+    }
+
+    const order: OrderInterface = {
+      price: targetPrice,
+      amount: Number(currencyAmount),
+      tradeMode: currentTradeMode,
+      tradeType: currentTradeType,
+    };
+  };
+
+  const handlePressTradeType = (type: TradeType) => {
+    setCurrentTradeType(type);
+    bottomSheetModalRef.current?.dismiss();
   };
 
   useEffect(() => {
@@ -92,55 +227,191 @@ const TradesScreen = () => {
       <HeaderContainer>
         <HeaderText>Spot Trade</HeaderText>
       </HeaderContainer>
-      <CryptoTitleContainer>
-        <CryptoTitleText>
-          {getCoinQuery.data?.symbol?.toUpperCase()}USDT
-        </CryptoTitleText>
-        <CryptoFluctuationText
-          isPositive={
-            getCoinQuery.data?.market_data?.price_percentage_1h_in_current
-              ?.usd > 0
-          }
+      <ScrollWrapper>
+        <CryptoHeaderContainer>
+          <CryptoTitleContainer>
+            <CryptoLogoImage
+              source={{ uri: getCoinQuery.data?.image?.thumb }}
+            />
+            <CryptoTitleText>
+              {getCoinQuery.data?.symbol?.toUpperCase()}USDT
+            </CryptoTitleText>
+          </CryptoTitleContainer>
+          <CryptoFluctuationText
+            isPositive={
+              getCoinQuery.data?.market_data?.price_percentage_1h_in_current
+                ?.usd > 0
+            }
+          >
+            {getCoinQuery.data?.market_data?.price_change_percentage_1h_in_currency?.usd?.toFixed(
+              2,
+            )}
+            %
+          </CryptoFluctuationText>
+        </CryptoHeaderContainer>
+        <ContentContainer>
+          <TradePriceContainer>
+            <TradPriceHintContainer>
+              <TradePriceHintTextContainer direction="left">
+                <TradePriceHintText>Price</TradePriceHintText>
+                <TradePriceHintText>(USDT)</TradePriceHintText>
+              </TradePriceHintTextContainer>
+              <TradePriceHintTextContainer direction="right">
+                <TradePriceHintText>Amount</TradePriceHintText>
+                <TradePriceHintText>(USDT)</TradePriceHintText>
+              </TradePriceHintTextContainer>
+            </TradPriceHintContainer>
+            {renderPriceRow("positive", dummyPositivePrices)}
+            <TradeCurrentPriceContainer>
+              <TradeCurrentPriceText status={"positive"}>
+                {getCoinQuery.data?.market_data?.current_price?.usd}
+              </TradeCurrentPriceText>
+            </TradeCurrentPriceContainer>
+            {renderPriceRow("negative", dummyNegativePrices)}
+          </TradePriceContainer>
+          <OrderContainer>
+            <TradeModeSelectContainer>
+              <TradeModeButton
+                onPress={() => handlePressTradeMode("Buy")}
+                type="Buy"
+                isSelected={currentTradeMode === "Buy"}
+              >
+                <TradeModeButtonText isSelected={currentTradeMode === "Buy"}>
+                  Buy
+                </TradeModeButtonText>
+              </TradeModeButton>
+              <TradeModeButton
+                onPress={() => handlePressTradeMode("Sell")}
+                type="Sell"
+                isSelected={currentTradeMode === "Sell"}
+              >
+                <TradeModeButtonText isSelected={currentTradeMode === "Sell"}>
+                  Sell
+                </TradeModeButtonText>
+              </TradeModeButton>
+            </TradeModeSelectContainer>
+            <TradeTypeSelectButton onPress={handlePressTradeTypeSelect}>
+              <Text>{currentTradeType}</Text>
+              <DownIcon source={require("@/assets/images/icons/down.png")} />
+            </TradeTypeSelectButton>
+            <TargetPriceContainer>
+              <TargetPriceTextInput
+                currentTradeType={currentTradeType}
+                editable={currentTradeType !== "Market"}
+                value={
+                  currentTradeType === "Market"
+                    ? "Market Price"
+                    : String(targetPrice)
+                }
+                keyboardType="number-pad"
+              />
+            </TargetPriceContainer>
+            <CurrencyAmountContainer>
+              <CurrencyAmountTextInput
+                value={currencyAmount}
+                onChangeText={(text) => setCurrencyAmount(text)}
+                placeholder="Total"
+                keyboardType="number-pad"
+                textAlign={"center"}
+              />
+              <CurrencyStandardContainer>
+                <CurrencyStandardText>
+                  {currentTradeMode === "Buy"
+                    ? "USDT"
+                    : getCoinQuery?.data?.symbol?.toUpperCase()}
+                </CurrencyStandardText>
+              </CurrencyStandardContainer>
+            </CurrencyAmountContainer>
+            <Slider
+              value={slideValue}
+              onValueChange={handleChangeSlideValue}
+              maximumValue={100}
+              renderThumbComponent={() => (
+                <ThumbImage
+                  source={require("@/assets/images/icons/rhombus.png")}
+                />
+              )}
+              renderTrackMarkComponent={() => (
+                <MarkerImage
+                  source={require("@/assets/images/icons/rhombus-small.png")}
+                />
+              )}
+              trackMarks={[0, 25, 50, 75, 100]}
+              renderAboveThumbComponent={(index, value) => {
+                if (isSliding) {
+                  return (
+                    <CurrencySliderAmountContainer>
+                      <CurrencySliderAmountText>
+                        {value.toFixed()}%
+                      </CurrencySliderAmountText>
+                    </CurrencySliderAmountContainer>
+                  );
+                }
+              }}
+              maximumTrackTintColor={"#ededed"}
+              minimumTrackTintColor={"#9f9f9f"}
+              onSlidingStart={() => setIsSliding(true)}
+              onSlidingComplete={() => setIsSliding(false)}
+            />
+            <CurrencyHintContainer>
+              <CurrencyHintRow>
+                <CurrencyHintLabel>Avbl</CurrencyHintLabel>
+                <CurrencyHintValueText>
+                  {currentTradeMode === "Buy"
+                    ? avblUSDT.toFixed(2)
+                    : avblBTC.toFixed(2)}{" "}
+                  {currentTradeMode === "Buy"
+                    ? "USDT"
+                    : getCoinQuery.data?.symbol.toUpperCase()}
+                </CurrencyHintValueText>
+              </CurrencyHintRow>
+              <CurrencyHintRow>
+                <CurrencyHintLabel>Max {currentTradeMode}</CurrencyHintLabel>
+                <CurrencyHintValueText>
+                  {calculateMaxBuy()} {getCoinQuery.data?.symbol?.toUpperCase()}
+                </CurrencyHintValueText>
+              </CurrencyHintRow>
+              <CurrencyHintRow>
+                <CurrencyHintLabel>Fee</CurrencyHintLabel>
+                <CurrencyHintValueText>0.1%</CurrencyHintValueText>
+              </CurrencyHintRow>
+            </CurrencyHintContainer>
+            <ActionButtonContainer>
+              <OrderButton
+                onPress={handleConfirmOrder}
+                tradeMode={currentTradeMode}
+              >
+                <OrderButtonText>
+                  {currentTradeMode} {getCoinQuery.data?.symbol?.toUpperCase()}
+                </OrderButtonText>
+              </OrderButton>
+            </ActionButtonContainer>
+          </OrderContainer>
+        </ContentContainer>
+        <BottomSheetModal
+          ref={bottomSheetModalRef}
+          enableDynamicSizing
+          backdropComponent={(props) => {
+            return (
+              <BottomSheetBackdrop
+                {...props}
+                appearsOnIndex={0}
+                disappearsOnIndex={-1}
+                opacity={0.4}
+              />
+            );
+          }}
         >
-          {getCoinQuery.data?.market_data?.price_change_percentage_1h_in_currency?.usd?.toFixed(
-            2,
-          )}
-          %
-        </CryptoFluctuationText>
-      </CryptoTitleContainer>
-      <ContentContainer>
-        <TradePriceContainer>
-          <TradPriceHintContainer>
-            <TradePriceHintTextContainer direction="left">
-              <TradePriceHintText>Price</TradePriceHintText>
-              <TradePriceHintText>(USDT)</TradePriceHintText>
-            </TradePriceHintTextContainer>
-            <TradePriceHintTextContainer direction="right">
-              <TradePriceHintText>Amount</TradePriceHintText>
-              <TradePriceHintText>(USDT)</TradePriceHintText>
-            </TradePriceHintTextContainer>
-          </TradPriceHintContainer>
-          {renderPriceRow(
-            "positive",
-            generateDummyPrices(
-              "positive",
-              getCoinQuery.data?.market_data?.current_price?.usd,
-            ),
-          )}
-          <TradeCurrentPriceContainer>
-            <TradeCurrentPriceText status={"positive"}>
-              {getCoinQuery.data?.market_data?.current_price?.usd}
-            </TradeCurrentPriceText>
-          </TradeCurrentPriceContainer>
-          {renderPriceRow(
-            "negative",
-            generateDummyPrices(
-              "negative",
-              getCoinQuery.data?.market_data?.current_price?.usd,
-            ),
-          )}
-        </TradePriceContainer>
-      </ContentContainer>
+          <BottomSheetViewContainer>
+            <TradeTypeButton onPress={() => handlePressTradeType("Market")}>
+              <TradeTypeButtonText>Market</TradeTypeButtonText>
+            </TradeTypeButton>
+            <TradeTypeButton onPress={() => handlePressTradeType("Limit")}>
+              <TradeTypeButtonText>Limit</TradeTypeButtonText>
+            </TradeTypeButton>
+          </BottomSheetViewContainer>
+        </BottomSheetModal>
+      </ScrollWrapper>
     </Container>
   );
 };
@@ -148,6 +419,10 @@ const TradesScreen = () => {
 const Container = styled.SafeAreaView`
   flex: 1;
   background-color: white;
+`;
+
+const ScrollWrapper = styled.ScrollView`
+  flex: 1;
 `;
 
 const HeaderContainer = styled.View`
@@ -161,8 +436,19 @@ const HeaderText = styled.Text`
   font-size: 20px;
 `;
 
+const CryptoHeaderContainer = styled.View`
+  padding: 16px 8px;
+`;
+
 const CryptoTitleContainer = styled.View`
-  padding: 16px 0;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+`;
+
+const CryptoLogoImage = styled.Image`
+  width: 20px;
+  height: 20px;
 `;
 
 const CryptoTitleText = styled.Text`
@@ -176,8 +462,9 @@ const CryptoFluctuationText = styled.Text<{ isPositive?: boolean }>`
 `;
 
 const ContentContainer = styled.View`
-  flex: 1;
   flex-direction: row;
+  gap: 16px;
+  padding: 0 8px;
 `;
 
 const TradePriceContainer = styled.View`
@@ -200,7 +487,7 @@ const TradePriceHintTextContainer = styled.View<{
 `;
 
 const TradePriceHintText = styled.Text`
-  font-size: 12px;
+  font-size: 10px;
   color: #717171;
 `;
 
@@ -213,7 +500,10 @@ const TradePriceRowContainer = styled.Pressable<{
   justify-content: space-between;
 `;
 
-const TradePriceText = styled.Text<{ type: "positive" | "negative" }>`
+const TradePriceText = styled.Text<{
+  type: "positive" | "negative";
+}>`
+  font-size: 14px;
   letter-spacing: 0.5px;
   color: ${(props) =>
     props.type === "positive"
@@ -239,6 +529,192 @@ const TradeCurrentPriceText = styled.Text<{
       : props.status === "negative"
         ? Colors.negativeCandleColor
         : "#717171"};
+`;
+
+const OrderContainer = styled.View`
+  flex: 1.5;
+  gap: 8px;
+`;
+
+const TradeModeSelectContainer = styled.View`
+  height: 24px;
+  flex-direction: row;
+  border-radius: 8px;
+  background-color: #ededed;
+`;
+
+const TradeModeButton = styled.Pressable<{
+  type: "Buy" | "Sell";
+  isSelected?: boolean;
+}>`
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  ${(props) =>
+    props.type === "Buy" &&
+    css`
+      border-top-left-radius: 8px;
+      border-bottom-left-radius: 8px;
+    `}
+  ${(props) =>
+    props.type === "Sell" &&
+    css`
+      border-top-right-radius: 8px;
+      border-bottom-right-radius: 8px;
+    `}
+  background-color: ${(props) => {
+    if (props.isSelected) {
+      return props.type === "Buy"
+        ? Colors.positiveCandleColor
+        : Colors.negativeCandleColor;
+    } else {
+      return "transparent";
+    }
+  }};
+`;
+
+const TradeModeButtonText = styled.Text<{ isSelected?: boolean }>`
+  color: ${(props) => (props.isSelected ? "white" : "#717171")};
+`;
+
+const TradeTypeSelectButton = styled.Pressable`
+  width: 100%;
+  padding: 8px;
+  background-color: #ededed;
+  border-radius: 8px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+`;
+
+const DownIcon = styled.Image`
+  position: absolute;
+  right: 8px;
+  width: 12px;
+  height: 12px;
+  tint-color: #958a8a;
+`;
+
+const TargetPriceContainer = styled.View`
+  min-height: 40px;
+  background-color: #e7edf4;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  padding: 8px;
+`;
+
+const TargetPriceTextInput = styled.TextInput<{ currentTradeType: TradeType }>`
+  flex: 1;
+  color: ${(props) =>
+    props.currentTradeType === "Market" ? "#a6a6a6" : "black"};
+`;
+
+const CurrencyAmountContainer = styled.View`
+  height: 40px;
+  padding: 0 8px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #ededed;
+  border-radius: 8px;
+`;
+
+const CurrencyAmountTextInput = styled.TextInput`
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+`;
+
+const CurrencyStandardContainer = styled.View`
+  padding: 4px 8px;
+  border-left-width: 0.5px;
+  border-color: #cacaca;
+`;
+
+const CurrencyStandardText = styled.Text`
+  font-size: 12px;
+`;
+
+const ThumbImage = styled.Image`
+  width: 20px;
+  height: 20px;
+`;
+
+const MarkerImage = styled.Image`
+  width: 8px;
+  height: 8px;
+  tint-color: #a3a3a3;
+`;
+
+const CurrencySliderAmountContainer = styled.View`
+  padding: 2px 4px;
+  align-items: center;
+  justify-content: center;
+  background-color: #878181;
+  border-radius: 4px;
+`;
+
+const CurrencySliderAmountText = styled.Text`
+  color: white;
+`;
+
+const CurrencyHintContainer = styled.View`
+  gap: 4px;
+`;
+
+const CurrencyHintRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const CurrencyHintLabel = styled.Text`
+  font-size: 12px;
+  color: #959595;
+`;
+
+const CurrencyHintValueText = styled.Text`
+  font-size: 12px;
+  color: #373737;
+`;
+
+const ActionButtonContainer = styled.View`
+  flex: 1;
+  justify-content: flex-end;
+`;
+
+const OrderButton = styled.Pressable<{ tradeMode?: TradeMode }>`
+  height: 40px;
+  background-color: ${(props) =>
+    props.tradeMode === "Buy"
+      ? Colors.positiveCandleColor
+      : Colors.negativeCandleColor};
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+`;
+
+const OrderButtonText = styled.Text`
+  font-weight: bold;
+  color: white;
+`;
+
+const BottomSheetViewContainer = styled(BottomSheetView)`
+  flex: 1;
+  padding-top: 32px;
+  padding-bottom: ${Dimensions.get("window").height * 0.3}px;
+`;
+
+const TradeTypeButton = styled.Pressable`
+  padding: 0 16px;
+  height: 60px;
+  align-items: flex-start;
+  justify-content: center;
+`;
+
+const TradeTypeButtonText = styled.Text`
+  font-size: 20px;
 `;
 
 export default TradesScreen;
