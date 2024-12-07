@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useLocalSearchParams, useNavigation } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import styled from "styled-components/native";
@@ -90,6 +90,7 @@ interface CoinDetails {
 
 const CryptoViewScreen = () => {
   const navigation = useNavigation();
+  const router = useRouter();
   const { cryptoId } = useLocalSearchParams();
 
   const [currentChartInterval, setCurrentChartInterval] = useState<number>(1);
@@ -176,10 +177,14 @@ const CryptoViewScreen = () => {
     }
   };
 
+  const handlePressTrade = () => {
+    router.navigate("/(tabs)/(trades)");
+  };
+
   return (
     <Container>
       <HeaderContainer>
-        <BackButton onPress={() => navigation.goBack()}>
+        <BackButton onPress={() => router.back()}>
           <BackIcon source={require("@/assets/images/icons/back.png")} />
         </BackButton>
         <TitleContainer>
@@ -340,10 +345,10 @@ const CryptoViewScreen = () => {
           </LineChart.Provider>
         )}
         <OptionButtonContainer>
-          <OptionButton type="buy">
+          <OptionButton type="buy" onPress={handlePressTrade}>
             <OptionButtonText>Buy</OptionButtonText>
           </OptionButton>
-          <OptionButton type="sell">
+          <OptionButton type="sell" onPress={handlePressTrade}>
             <OptionButtonText>Sell</OptionButtonText>
           </OptionButton>
         </OptionButtonContainer>
