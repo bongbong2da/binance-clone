@@ -37,6 +37,8 @@ const TradesScreen = () => {
   const { cryptoId } = useLocalSearchParams();
   const router = useRouter();
 
+  const fixedVsCurrency = "USDT";
+
   const [tabBarVisible, setTabBarVisible] = useRecoilState(tabBarVisibleAtom);
 
   const isInitialized = useRef<boolean>(false);
@@ -49,6 +51,9 @@ const TradesScreen = () => {
     TradePriceItem[]
   >([]);
 
+  const [currentCryptoSymbol, setCurrentCryptoSymbol] = useState<string>("");
+  const [currentCryptoMarketPrice, setCurrentCryptoMarketPrice] =
+    useState<number>(0);
   const [avblUSDT, setAvblUSDT] = useState(500);
   const [avblCrypto, setAvblCrypto] = useState(0.1);
   const [currentCryptoId, setCurrentCryptoId] = useState<string>("solana");
@@ -80,6 +85,11 @@ const TradesScreen = () => {
           response.data.market_data.current_price.usd,
         );
       }
+
+      setCurrentCryptoSymbol(response.data.symbol?.toUpperCase());
+      setCurrentCryptoMarketPrice(
+        response.data.market_data?.current_price?.usd,
+      );
 
       return response.data;
     },
@@ -159,8 +169,7 @@ const TradesScreen = () => {
 
   const calculateMaxBuy = () => {
     if (currentTradeMode === "Buy") {
-      const maxValue =
-        avblUSDT / Number(getCoinQuery.data?.market_data?.current_price?.usd);
+      const maxValue = avblUSDT / currentCryptoMarketPrice;
 
       return maxValue.toFixed(4);
     } else {
@@ -244,7 +253,7 @@ const TradesScreen = () => {
         <OrderRowHeaderContainer>
           <OrderHeaderLeftContainer>
             <OrderSymbolText>
-              {getCoinQuery?.data?.symbol?.toUpperCase()}/USDT
+              {currentCryptoSymbol}/{fixedVsCurrency}
             </OrderSymbolText>
             <OrderTypeModeContainer>
               <OrderTypeModeText tradeType={order.tradeType}>
@@ -307,7 +316,8 @@ const TradesScreen = () => {
               source={{ uri: getCoinQuery.data?.image?.thumb }}
             />
             <CryptoTitleText>
-              {getCoinQuery.data?.symbol?.toUpperCase()}USDT
+              {getCoinQuery.data?.symbol?.toUpperCase()}
+              {fixedVsCurrency}
             </CryptoTitleText>
           </CryptoTitleContainer>
           <CryptoFluctuationText
@@ -327,17 +337,17 @@ const TradesScreen = () => {
             <TradPriceHintContainer>
               <TradePriceHintTextContainer direction="left">
                 <TradePriceHintText>Price</TradePriceHintText>
-                <TradePriceHintText>(USDT)</TradePriceHintText>
+                <TradePriceHintText>({currentCryptoSymbol})</TradePriceHintText>
               </TradePriceHintTextContainer>
               <TradePriceHintTextContainer direction="right">
                 <TradePriceHintText>Amount</TradePriceHintText>
-                <TradePriceHintText>(USDT)</TradePriceHintText>
+                <TradePriceHintText>({fixedVsCurrency})</TradePriceHintText>
               </TradePriceHintTextContainer>
             </TradPriceHintContainer>
             {renderPriceRow("positive", dummyPositivePrices)}
             <TradeCurrentPriceContainer>
               <TradeCurrentPriceText status={"positive"}>
-                {getCoinQuery.data?.market_data?.current_price?.usd}
+                {currentCryptoMarketPrice}
               </TradeCurrentPriceText>
             </TradeCurrentPriceContainer>
             {renderPriceRow("negative", dummyNegativePrices)}
@@ -391,8 +401,8 @@ const TradesScreen = () => {
               <CurrencyStandardContainer>
                 <CurrencyStandardText>
                   {currentTradeMode === "Buy"
-                    ? "USDT"
-                    : getCoinQuery?.data?.symbol?.toUpperCase()}
+                    ? fixedVsCurrency
+                    : currentCryptoSymbol}
                 </CurrencyStandardText>
               </CurrencyStandardContainer>
             </CurrencyAmountContainer>
@@ -405,12 +415,6 @@ const TradesScreen = () => {
                   source={require("@/assets/images/icons/rhombus.png")}
                 />
               )}
-              renderTrackMarkComponent={() => (
-                <MarkerImage
-                  source={require("@/assets/images/icons/rhombus-small.png")}
-                />
-              )}
-              trackMarks={[0, 25, 50, 75, 100]}
               renderAboveThumbComponent={(index, value) => {
                 if (isSliding) {
                   return (
@@ -435,14 +439,14 @@ const TradesScreen = () => {
                     ? avblUSDT.toFixed(2)
                     : avblCrypto.toFixed(2)}{" "}
                   {currentTradeMode === "Buy"
-                    ? "USDT"
+                    ? fixedVsCurrency
                     : getCoinQuery.data?.symbol.toUpperCase()}
                 </CurrencyHintValueText>
               </CurrencyHintRow>
               <CurrencyHintRow>
                 <CurrencyHintLabel>Max {currentTradeMode}</CurrencyHintLabel>
                 <CurrencyHintValueText>
-                  {calculateMaxBuy()} {getCoinQuery.data?.symbol?.toUpperCase()}
+                  {calculateMaxBuy()} {currentCryptoSymbol}
                 </CurrencyHintValueText>
               </CurrencyHintRow>
               <CurrencyHintRow>
@@ -456,7 +460,7 @@ const TradesScreen = () => {
                 tradeMode={currentTradeMode}
               >
                 <OrderButtonText>
-                  {currentTradeMode} {getCoinQuery.data?.symbol?.toUpperCase()}
+                  {currentTradeMode} {currentCryptoSymbol}
                 </OrderButtonText>
               </OrderButton>
             </ActionButtonContainer>
