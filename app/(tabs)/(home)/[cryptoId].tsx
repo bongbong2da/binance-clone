@@ -6,23 +6,47 @@ import styled from "styled-components/native";
 import { Dimensions, Text } from "react-native";
 import { Colors } from "@/constants/Colors";
 import { LineChart } from "react-native-wagmi-charts";
-import { GeckoCoinDetail } from "@/types/gecko/types";
+import {
+  ExchangeInfo,
+  TickerPrice,
+  TickerPriceChange,
+} from "@/types/binance/types";
+import { useRecoilState } from "recoil";
+import { standardCurrencyAtom } from "@/recoil/atoms/CurrencyAtoms";
 
 const CryptoId = () => {
   const router = useRouter();
   const { cryptoId } = useLocalSearchParams();
 
+  const [standardCurrency, setStandardCurrency] =
+    useRecoilState(standardCurrencyAtom);
+
+  const [currentExchangeInfo, setCurrentExchangeInfo] =
+    useState<ExchangeInfo>();
+  const [currentTickerPrice, setCurrentTickerPrice] = useState<TickerPrice>();
+  const [currentTickerPriceChange, setCurrentTickerPriceChange] =
+    useState<TickerPriceChange>();
+  const [currentTickerSymbol, setCurrentTickerSymbol] = useState<string>("");
+
   const [currentChartInterval, setCurrentChartInterval] = useState<number>(1);
   const [currentPriceChart, setCurrentPriceChart] = useState<any[]>([]);
   const [currentVolumeChart, setCurrentVolumeChart] = useState<any[]>([]);
 
-  const getCoinQuery = useQuery<GeckoCoinDetail>({
-    queryKey: ["getCoin", cryptoId],
+  const getExchangeInfo = useQuery<ExchangeInfo>({
+    queryKey: ["getExchangeInfo", cryptoId],
     queryFn: async () => {
       const response = await axios.get(
-        process.env.EXPO_PUBLIC_GECKCO_API_URL + `/coins/${cryptoId}`,
-        {},
+        process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/exchangeInfo`,
+        {
+          params: {
+            symbol: cryptoId,
+          },
+        },
       );
+
+      setCurrentExchangeInfo(response.data);
+      setCurrentTickerSymbol(response.data.symbols[0].symbol);
+
       return response.data;
     },
     retry: 1,
@@ -56,11 +80,51 @@ const CryptoId = () => {
     staleTime: 1000 * 60 * 5,
   });
 
+  const getTickerPrice = useQuery({
+    queryKey: ["getTickerPrice", cryptoId],
+    queryFn: async () => {
+      const response = await axios.get(
+        process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/ticker/price`,
+        {
+          params: {
+            symbol: cryptoId,
+          },
+        },
+      );
+
+      setCurrentTickerPrice(response.data);
+
+      return response.data;
+    },
+    retry: 1,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const getTickerPriceChange = useQuery({
+    queryKey: ["getTickerPriceChange", cryptoId],
+    queryFn: async () => {
+      const response = await axios.get(
+        process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/ticker/24hr`,
+        {
+          params: {
+            symbol: cryptoId,
+          },
+        },
+      );
+
+      setCurrentTickerPriceChange(response.data);
+
+      return response.data;
+    },
+    retry: 1,
+    staleTime: 1000 * 60 * 5,
+  });
+
   const convertUSDtoBillions = (usd: number) => {
-    if (usd > 1000000000) {
-      return (usd / 1000000000).toFixed(2);
-    } else if (usd > 1000000) {
-      return (usd / 1000000).toFixed(2);
+    if (usd > 10000) {
+      return (usd / 10000).toFixed(2);
+    } else if (usd > 10000) {
+      return (usd / 10000).toFixed(2);
     } else {
       return usd;
     }
@@ -97,7 +161,7 @@ const CryptoId = () => {
   };
 
   const handlePressTrade = () => {
-    router.navigate(`/(tabs)/(trades)/${getCoinQuery.data?.symbol}`);
+    router.navigate(`/(tabs)/(trades)/${currentExchangeInfo?.symbols[0]}`);
   };
 
   return (
@@ -107,8 +171,7 @@ const CryptoId = () => {
           <BackIcon source={require("@/assets/images/icons/back.png")} />
         </BackButton>
         <TitleContainer>
-          <CryptoLogoImage source={{ uri: getCoinQuery.data?.image.thumb }} />
-          <Text>{getCoinQuery.data?.name}</Text>
+          <Text>{currentTickerSymbol}</Text>
         </TitleContainer>
       </HeaderContainer>
       <ContentContainer>
@@ -116,23 +179,21 @@ const CryptoId = () => {
           <CurrentPriceContainer>
             <CurrentPriceText
               isPositive={
-                getCoinQuery.data?.market_data
-                  ?.price_change_percentage_1h_in_currency > 0
+                Number(currentTickerPriceChange?.priceChangePercent) > 0
               }
             >
-              {getCoinQuery.data?.market_data.current_price?.usd}
+              {Number(currentTickerPrice?.price)?.toFixed(4)}
             </CurrentPriceText>
             <SubPriceContainer>
               <USDPriceText>
-                ≈ ${getCoinQuery.data?.market_data.current_price?.usd}
+                ≈ ${Number(currentTickerPrice?.price)?.toFixed(2)}
               </USDPriceText>
               <FluctuationText
                 isPositive={
-                  getCoinQuery.data?.market_data
-                    .market_cap_change_percentage_24h > 0
+                  Number(currentTickerPriceChange?.priceChangePercent) > 0
                 }
               >
-                {getCoinQuery.data?.market_data.market_cap_change_percentage_24h?.toFixed(
+                {Number(currentTickerPriceChange?.priceChangePercent).toFixed(
                   2,
                 )}
                 %
@@ -143,32 +204,29 @@ const CryptoId = () => {
             <SummarySectionContainer>
               <SummarySectionTitle>24 High</SummarySectionTitle>
               <SummarySectionText>
-                {getCoinQuery.data?.market_data?.high_24h?.usd}
+                {Number(currentTickerPriceChange?.highPrice).toFixed()}
               </SummarySectionText>
             </SummarySectionContainer>
             <SummarySectionContainer>
               <SummarySectionTitle>
-                24h Vol({getCoinQuery.data?.name})
+                24h Vol({currentExchangeInfo?.symbols[0].baseAsset})
               </SummarySectionTitle>
               <SummarySectionText>
-                {convertUSDtoBillions(
-                  getCoinQuery.data?.market_data?.market_cap?.usd,
-                )}
-                B
+                {Number(currentTickerPriceChange?.volume).toFixed(2)}
               </SummarySectionText>
             </SummarySectionContainer>
             <SummarySectionContainer>
               <SummarySectionTitle>24h Low</SummarySectionTitle>
               <SummarySectionText>
-                {getCoinQuery.data?.market_data?.low_24h?.usd}
+                {Number(currentTickerPriceChange?.lowPrice).toFixed()}
               </SummarySectionText>
             </SummarySectionContainer>
             <SummarySectionContainer>
-              <SummarySectionTitle>24h Vol(USDT)</SummarySectionTitle>
+              <SummarySectionTitle>
+                24h Vol({currentExchangeInfo?.symbols[0].quoteAsset})
+              </SummarySectionTitle>
               <SummarySectionText>
-                {convertUSDtoBillions(
-                  getCoinQuery.data?.market_data?.market_cap?.usd,
-                )}
+                {convertUSDtoBillions(Number(currentTickerPriceChange?.volume))}
                 B
               </SummarySectionText>
             </SummarySectionContainer>
@@ -208,7 +266,7 @@ const CryptoId = () => {
                 <LineChart.Gradient color={Colors.light.secondaryTint} />
                 <LineChart.HorizontalLine
                   at={{
-                    value: getCoinQuery.data?.market_data.current_price?.usd,
+                    value: Number(currentTickerPrice?.price),
                   }}
                 />
               </LineChart.Path>
