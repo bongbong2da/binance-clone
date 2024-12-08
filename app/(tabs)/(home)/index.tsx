@@ -10,6 +10,7 @@ import { useRecoilState } from "recoil";
 import { tabBarVisibleAtom } from "@/recoil/atoms/UIAtoms";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { TickerPrice, TickerPriceChange } from "@/types/binance/types";
+import { standardCurrencyAtom } from "@/recoil/atoms/CurrencyAtoms";
 
 type FluctuationType = "positive" | "negative" | "neutral";
 
@@ -22,6 +23,22 @@ const HomeScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const router = useRouter();
   const [tabBarVisible, setTabBarVisible] = useRecoilState(tabBarVisibleAtom);
+  const [standardCurrency, setStandardCurrency] =
+    useRecoilState(standardCurrencyAtom);
+
+  const promotionTickers = [
+    `BTC${standardCurrency}`,
+    `ETH${standardCurrency}`,
+    `BNB${standardCurrency}`,
+    `ADA${standardCurrency}`,
+    `SOL${standardCurrency}`,
+    `DOT${standardCurrency}`,
+    `DOGE${standardCurrency}`,
+    `LUNA${standardCurrency}`,
+    `AVAX${standardCurrency}`,
+    `UNI${standardCurrency}`,
+  ];
+
   const [currentPromotionCrypto, setCurrentPromotionCrypto] = useState([]);
   const [
     currentPromotionCryptoPriceChanges,
@@ -32,7 +49,8 @@ const HomeScreen = () => {
     queryKey: ["getPromotionTickers"],
     queryFn: async () => {
       const response = await axios.get(
-        process.env.EXPO_PUBLIC_BINANCE_API_URL + "/api/v3/ticker/price",
+        process.env.EXPO_PUBLIC_BINANCE_API_URL +
+          `/api/v3/ticker/price?symbols=[${promotionTickers.map((ticker) => `"${ticker}"`)}]`,
       );
 
       setCurrentPromotionCrypto(response.data.slice(0, 10));
@@ -47,8 +65,8 @@ const HomeScreen = () => {
     queryFn: async () => {
       const response = await axios.get(
         process.env.EXPO_PUBLIC_BINANCE_API_URL +
-          `/api/v3/ticker/24hr?symbols=[${currentPromotionCrypto.map(
-            (coin: TickerPrice) => `"${coin.symbol}"`,
+          `/api/v3/ticker/24hr?symbols=[${promotionTickers.map(
+            (ticker) => `"${ticker}"`,
           )}]`,
       );
 
@@ -66,11 +84,6 @@ const HomeScreen = () => {
     enabled: currentPromotionCrypto.length > 0,
     staleTime: 1000 * 60 * 5,
   });
-
-  const convertBTCtoUSD = (btc: string) => {
-    const btcToUsd = Number(btc) * 98392.53;
-    return btcToUsd.toFixed(5);
-  };
 
   const handlePressCrypto = (symbol: string) => {
     router.navigate(`/(tabs)/(home)/${symbol}`);
@@ -121,9 +134,9 @@ const HomeScreen = () => {
                   </PromotionCoinTitle>
                 </PromotionCoinTitleContainer>
                 <CoinPriceContainer>
-                  <Text>{convertBTCtoUSD(ticker.tickerPrice.price)}</Text>
+                  <Text>{Number(ticker.tickerPrice.price).toFixed(2)}</Text>
                   <CoinPriceHintText>
-                    ${convertBTCtoUSD(ticker.tickerPrice.price)}
+                    ${Number(ticker.tickerPrice.price).toFixed(2)}
                   </CoinPriceHintText>
                 </CoinPriceContainer>
                 <FluctuationContainer
