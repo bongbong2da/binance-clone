@@ -5,7 +5,6 @@ import { tabBarVisibleAtom } from "@/recoil/atoms/UIAtoms";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { GeckoCoinDetail } from "@/types/gecko/types";
 import { Colors } from "@/constants/Colors";
 import { Dimensions, Text } from "react-native";
 import { css } from "styled-components";
@@ -15,9 +14,20 @@ import {
   BottomSheetModal,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
+import {
+  ExchangeInfo,
+  TickerPrice,
+  TickerPriceChange,
+} from "@/types/binance/types";
 
 type TradeMode = "Buy" | "Sell";
 type TradeType = "Market" | "Limit";
+
+interface OrderBook {
+  lastUpdateId: number;
+  bids: [string, string][];
+  asks: [string, string][];
+}
 
 interface OrderInterface {
   price: "Market" | number;
@@ -41,7 +51,7 @@ const TradesScreen = () => {
 
   const [tabBarVisible, setTabBarVisible] = useRecoilState(tabBarVisibleAtom);
 
-  const isInitialized = useRef<boolean>(false);
+  const isTargetPriceInitialized = useRef<boolean>(false);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const [dummyPositivePrices, setDummyPositivePrices] = useState<
@@ -51,12 +61,14 @@ const TradesScreen = () => {
     TradePriceItem[]
   >([]);
 
-  const [currentCryptoSymbol, setCurrentCryptoSymbol] = useState<string>("");
+  const [currentCryptoSymbol, setCurrentCryptoSymbol] = useState<string>("BTC");
   const [currentCryptoMarketPrice, setCurrentCryptoMarketPrice] =
     useState<number>(0);
+  const [currentDayTickerPriceChange, setCurrentDayTickerPriceChange] =
+    useState<TickerPriceChange>();
   const [avblUSDT, setAvblUSDT] = useState(500);
   const [avblCrypto, setAvblCrypto] = useState(0.1);
-  const [currentCryptoId, setCurrentCryptoId] = useState<string>("solana");
+  const [currentCryptoId, setCurrentCryptoId] = useState<string>("BTC");
   const [currentTradeMode, setCurrentTradeMode] = useState<TradeMode>("Buy");
   const [currentTradeType, setCurrentTradeType] = useState<TradeType>("Market");
   const [targetPrice, setTargetPrice] = useState<number>(0);
@@ -66,35 +78,94 @@ const TradesScreen = () => {
 
   const [orderList, setOrderList] = useState<OrderInterface[]>([]);
 
-  const getCoinQuery = useQuery<GeckoCoinDetail>({
-    queryKey: ["getCoin", currentCryptoId],
+  const getExchangeInfo = useQuery<ExchangeInfo>({
+    queryKey: ["getExchangeInfo", currentCryptoId],
     queryFn: async () => {
       const response = await axios.get(
-        process.env.EXPO_PUBLIC_GECKCO_API_URL + `/coins/${currentCryptoId}`,
-        {},
+        process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/exchangeInfo`,
+        {
+          params: {
+            symbol: `${currentCryptoSymbol}${fixedVsCurrency}`,
+          },
+        },
       );
 
-      if (!isInitialized.current) {
-        setTargetPrice(response.data.market_data.current_price.usd);
-        generateDummyPrices(
-          "positive",
-          response.data.market_data.current_price.usd,
-        );
-        generateDummyPrices(
-          "negative",
-          response.data.market_data.current_price.usd,
+      if (response.data?.symbols?.[0]) {
+        setCurrentCryptoSymbol(
+          response.data?.symbols?.[0]?.symbol?.replace(fixedVsCurrency, ""),
         );
       }
-
-      setCurrentCryptoSymbol(response.data.symbol?.toUpperCase());
-      setCurrentCryptoMarketPrice(
-        response.data.market_data?.current_price?.usd,
-      );
 
       return response.data;
     },
     retry: 1,
-    staleTime: 1000 * 60 * 5,
+    refetchInterval: 2000,
+  });
+
+  const getTickerPriceQuery = useQuery<TickerPrice>({
+    queryKey: ["getTickerPrice", currentCryptoId],
+    queryFn: async () => {
+      const response = await axios.get(
+        process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/ticker/price`,
+        {
+          params: {
+            symbol: `${currentCryptoSymbol}${fixedVsCurrency}`,
+          },
+        },
+      );
+
+      if (!isTargetPriceInitialized.current) {
+        setTargetPrice(response.data.price);
+        isTargetPriceInitialized.current = true;
+      }
+
+      setCurrentCryptoMarketPrice(response.data.price);
+
+      return response.data;
+    },
+    retry: 1,
+    refetchInterval: 2000,
+  });
+
+  const getOrderBooksQuery = useQuery<OrderBook>({
+    queryKey: ["getOrderBooks", currentCryptoId],
+    queryFn: async () => {
+      const response = await axios.get(
+        process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/depth`,
+        {
+          params: {
+            symbol: `${currentCryptoSymbol}${fixedVsCurrency}`,
+          },
+        },
+      );
+
+      generateDummyPrices(response.data);
+
+      return response.data;
+    },
+    retry: 1,
+    refetchInterval: 2000,
+    enabled: currentCryptoSymbol !== "",
+  });
+
+  const getDayTickerPriceChange = useQuery<TickerPriceChange>({
+    queryKey: ["getDayTickerPriceChange", currentCryptoId],
+    queryFn: async () => {
+      const response = await axios.get(
+        process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/ticker/24hr`,
+        {
+          params: {
+            symbol: `${currentCryptoSymbol}${fixedVsCurrency}`,
+          },
+        },
+      );
+
+      setCurrentDayTickerPriceChange(response.data);
+
+      return response.data;
+    },
+    retry: 1,
+    staleTime: 1000,
   });
 
   const handlePressPriceRow = (
@@ -117,44 +188,38 @@ const TradesScreen = () => {
     return items.map((item, index) => {
       return (
         <TradePriceRowContainer
-          key={index + item.price}
+          key={`${index}-${item.price}`}
           type={type}
           onPress={() => handlePressPriceRow(type, item.price)}
         >
           <TradePriceText type={type}>{item.price}</TradePriceText>
-          <TradePriceText type={type}>{item.amount}</TradePriceText>
+          <TradePriceText type={type}>{item.amount?.toFixed(2)}</TradePriceText>
         </TradePriceRowContainer>
       );
     });
   };
 
-  const generateDummyPrices = (
-    type: "positive" | "negative",
-    currentPrice: number,
-  ) => {
-    if (!currentPrice) return [];
+  const generateDummyPrices = (orderBook: OrderBook) => {
+    const targetAsks = orderBook.asks.slice(0, 5);
+    const targetBids = orderBook.bids.slice(0, 5);
 
-    const prices = [];
-    const numberOfDigits = currentPrice.toString().length;
-    const proportionalNumber = 1 / Math.pow(10, numberOfDigits - 0.1);
+    const positivePrices: TradePriceItem[] = [];
+    const negativePrices: TradePriceItem[] = [];
 
-    for (let i = 1; i < 7; i++) {
-      const additionalPrice = i * currentPrice * proportionalNumber;
-      const price =
-        type === "positive"
-          ? currentPrice + additionalPrice
-          : currentPrice - additionalPrice;
-      const randomAmount = Math.floor(
-        Math.random() * Math.floor(Math.random() * 10000),
-      );
-      prices.push({ price: Number(price.toFixed(2)), amount: randomAmount });
-    }
+    targetBids.forEach((bid) => {
+      const price = Number(bid[0]);
+      const amount = Number(bid[1]);
+      negativePrices.push({ price, amount });
+    });
 
-    if (type === "positive") {
-      setDummyPositivePrices(prices);
-    } else {
-      setDummyNegativePrices(prices);
-    }
+    targetAsks.forEach((ask) => {
+      const price = Number(ask[0]);
+      const amount = Number(ask[1]);
+      positivePrices.push({ price, amount });
+    });
+
+    setDummyPositivePrices(positivePrices.reverse());
+    setDummyNegativePrices(negativePrices);
   };
 
   const handlePressTradeMode = (mode: TradeMode) => {
@@ -247,6 +312,13 @@ const TradesScreen = () => {
     setOrderList([]);
   };
 
+  const calculateIsPositive = (priceChangePercent?: string) => {
+    if (!priceChangePercent) return false;
+    const number = Number(priceChangePercent);
+    if (isNaN(number)) return false;
+    return number > 0;
+  };
+
   const renderOrderItem = (order: OrderInterface, index: number) => {
     return (
       <OrderRowContainer key={index + order.createdAt.toLocaleDateString()}>
@@ -312,24 +384,17 @@ const TradesScreen = () => {
       <ScrollWrapper>
         <CryptoHeaderContainer>
           <CryptoTitleContainer>
-            <CryptoLogoImage
-              source={{ uri: getCoinQuery.data?.image?.thumb }}
-            />
             <CryptoTitleText>
-              {getCoinQuery.data?.symbol?.toUpperCase()}
+              {currentCryptoSymbol}
               {fixedVsCurrency}
             </CryptoTitleText>
           </CryptoTitleContainer>
           <CryptoFluctuationText
-            isPositive={
-              getCoinQuery.data?.market_data?.price_percentage_1h_in_current
-                ?.usd > 0
-            }
-          >
-            {getCoinQuery.data?.market_data?.price_change_percentage_1h_in_currency?.usd?.toFixed(
-              2,
+            isPositive={calculateIsPositive(
+              currentDayTickerPriceChange?.priceChangePercent,
             )}
-            %
+          >
+            {currentDayTickerPriceChange?.priceChangePercent}%
           </CryptoFluctuationText>
         </CryptoHeaderContainer>
         <ContentContainer>
@@ -347,7 +412,7 @@ const TradesScreen = () => {
             {renderPriceRow("positive", dummyPositivePrices)}
             <TradeCurrentPriceContainer>
               <TradeCurrentPriceText status={"positive"}>
-                {currentCryptoMarketPrice}
+                {Number(currentCryptoMarketPrice).toFixed(2)}
               </TradeCurrentPriceText>
             </TradeCurrentPriceContainer>
             {renderPriceRow("negative", dummyNegativePrices)}
@@ -440,7 +505,7 @@ const TradesScreen = () => {
                     : avblCrypto.toFixed(2)}{" "}
                   {currentTradeMode === "Buy"
                     ? fixedVsCurrency
-                    : getCoinQuery.data?.symbol.toUpperCase()}
+                    : currentCryptoSymbol}
                 </CurrencyHintValueText>
               </CurrencyHintRow>
               <CurrencyHintRow>
