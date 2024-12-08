@@ -11,15 +11,31 @@ import { useEffect } from "react";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { RecoilRoot } from "recoil";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { configureReanimatedLogger } from "react-native-reanimated";
+import Toast from "react-native-toast-message";
+import show = Toast.show;
 
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error: any) => {
+      show({
+        type: "error",
+        text1: error?.message,
+        text2: error?.response?.data?.msg,
+      });
+    },
+  }),
+});
 
 configureReanimatedLogger({
   strict: false,
@@ -51,6 +67,7 @@ const RootLayout = () => {
                 <Stack.Screen name="+not-found" />
               </Stack>
               <StatusBar style="auto" />
+              <Toast />
             </QueryClientProvider>
           </BottomSheetModalProvider>
         </RecoilRoot>
