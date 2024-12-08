@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components/native";
 import HomeCustomHeader from "@/components/HomeCustomHeader";
 import { Colors } from "@/constants/Colors";
@@ -9,24 +9,62 @@ import { useNavigation, useRouter } from "expo-router";
 import { useRecoilState } from "recoil";
 import { tabBarVisibleAtom } from "@/recoil/atoms/UIAtoms";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { GeckoTrendingCoin } from "@/types/gecko/types";
+import { TickerPrice, TickerPriceChange } from "@/types/binance/types";
 
 type FluctuationType = "positive" | "negative" | "neutral";
+
+interface TickerWithPrice {
+  tickerPrice: TickerPrice;
+  priceChange: TickerPriceChange;
+}
 
 const HomeScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const router = useRouter();
   const [tabBarVisible, setTabBarVisible] = useRecoilState(tabBarVisibleAtom);
+  const [currentPromotionCrypto, setCurrentPromotionCrypto] = useState([]);
+  const [
+    currentPromotionCryptoPriceChanges,
+    setCurrentPromotionCryptoPriceChanges,
+  ] = useState<TickerWithPrice[]>([]);
 
-  const getExchangesQuery = useQuery({
-    queryKey: ["getTrendingCoins"],
+  const getPromotionTickerPrice = useQuery<TickerPrice[]>({
+    queryKey: ["getPromotionTickers"],
     queryFn: async () => {
       const response = await axios.get(
-        process.env.EXPO_PUBLIC_GECKCO_API_URL + "/search/trending",
+        process.env.EXPO_PUBLIC_BINANCE_API_URL + "/api/v3/ticker/price",
       );
-      return response;
+
+      setCurrentPromotionCrypto(response.data.slice(0, 10));
+
+      return response.data;
     },
-    staleTime: 1000 * 60 * 60,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const getPromotionTickerPriceChanges = useQuery<TickerPriceChange[]>({
+    queryKey: ["getPromotionTickerPriceChanges", currentPromotionCrypto],
+    queryFn: async () => {
+      const response = await axios.get(
+        process.env.EXPO_PUBLIC_BINANCE_API_URL +
+          `/api/v3/ticker/24hr?symbols=[${currentPromotionCrypto.map(
+            (coin: TickerPrice) => `"${coin.symbol}"`,
+          )}]`,
+      );
+
+      const tickersWithPrice: TickerWithPrice[] = response.data.map(
+        (priceChange: TickerPriceChange, index: number) => ({
+          tickerPrice: currentPromotionCrypto[index],
+          priceChange,
+        }),
+      );
+
+      setCurrentPromotionCryptoPriceChanges(tickersWithPrice);
+
+      return response.data;
+    },
+    enabled: currentPromotionCrypto.length > 0,
+    staleTime: 1000 * 60 * 5,
   });
 
   const convertBTCtoUSD = (btc: string) => {
@@ -34,8 +72,8 @@ const HomeScreen = () => {
     return btcToUsd.toFixed(5);
   };
 
-  const handlePressCrypto = (crypto: GeckoTrendingCoin) => {
-    router.navigate(`/(tabs)/(home)/${crypto.id}`);
+  const handlePressCrypto = (symbol: string) => {
+    router.navigate(`/(tabs)/(home)/${symbol}`);
   };
 
   useEffect(() => {
@@ -71,41 +109,37 @@ const HomeScreen = () => {
           </PromotionButton>
         </PromotionContainer>
         <PromotionCoinsContainer>
-          {getExchangesQuery.data?.data?.coins?.map(
-            (coin: { item: GeckoTrendingCoin }, index: number) => {
-              return (
-                <PromotionCoinButton
-                  key={index + coin.item.id}
-                  onPress={() => handlePressCrypto(coin.item)}
+          {currentPromotionCryptoPriceChanges.map((ticker, index: number) => {
+            return (
+              <PromotionCoinButton
+                key={index + ticker.tickerPrice.symbol}
+                onPress={() => handlePressCrypto(ticker.tickerPrice.symbol)}
+              >
+                <PromotionCoinTitleContainer>
+                  <PromotionCoinTitle>
+                    {ticker.tickerPrice.symbol}
+                  </PromotionCoinTitle>
+                </PromotionCoinTitleContainer>
+                <CoinPriceContainer>
+                  <Text>{convertBTCtoUSD(ticker.tickerPrice.price)}</Text>
+                  <CoinPriceHintText>
+                    ${convertBTCtoUSD(ticker.tickerPrice.price)}
+                  </CoinPriceHintText>
+                </CoinPriceContainer>
+                <FluctuationContainer
+                  fluctuation={
+                    Number(ticker.priceChange.priceChange) > 0
+                      ? "positive"
+                      : "negative"
+                  }
                 >
-                  <PromotionCoinTitleContainer>
-                    <PromotionCoinTitle>{coin.item.symbol}</PromotionCoinTitle>
-                    <CryptoLogoImage source={{ uri: coin.item.large }} />
-                  </PromotionCoinTitleContainer>
-                  <CoinPriceContainer>
-                    <Text>{convertBTCtoUSD(coin.item.price_btc)}</Text>
-                    <CoinPriceHintText>
-                      ${convertBTCtoUSD(coin.item.price_btc)}
-                    </CoinPriceHintText>
-                  </CoinPriceContainer>
-                  <FluctuationContainer
-                    fluctuation={
-                      Number(coin.item.data.price_change_percentage_24h.usd) > 0
-                        ? "positive"
-                        : "negative"
-                    }
-                  >
-                    <FluctuationText numberOfLines={1}>
-                      {coin.item.data.price_change_percentage_24h.usd.toFixed(
-                        2,
-                      )}
-                      %
-                    </FluctuationText>
-                  </FluctuationContainer>
-                </PromotionCoinButton>
-              );
-            },
-          )}
+                  <FluctuationText numberOfLines={1}>
+                    {Number(ticker.priceChange.priceChangePercent).toFixed(2)}%
+                  </FluctuationText>
+                </FluctuationContainer>
+              </PromotionCoinButton>
+            );
+          })}
           <ViewMoreButton>
             <ViewMoreText>View 350+ Coins</ViewMoreText>
           </ViewMoreButton>
