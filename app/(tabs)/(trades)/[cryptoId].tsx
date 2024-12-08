@@ -186,14 +186,20 @@ const TradesScreen = () => {
     items: { price: number; amount: number }[],
   ) => {
     return items.map((item, index) => {
+      const priceString = String(item.price);
+      const priceEightDigit = `${priceString.slice(0, 8)}..`;
+
+      const amountString = String(item.amount);
+      const amountFourDigit = `${amountString.slice(0, 4)}`;
+
       return (
         <TradePriceRowContainer
           key={`${index}-${item.price}`}
           type={type}
           onPress={() => handlePressPriceRow(type, item.price)}
         >
-          <TradePriceText type={type}>{item.price}</TradePriceText>
-          <TradePriceText type={type}>{item.amount?.toFixed(2)}</TradePriceText>
+          <TradePriceText type={type}>{priceEightDigit}</TradePriceText>
+          <TradePriceText type={type}>{amountFourDigit}</TradePriceText>
         </TradePriceRowContainer>
       );
     });
