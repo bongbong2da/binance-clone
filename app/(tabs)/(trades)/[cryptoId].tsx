@@ -47,8 +47,6 @@ const TradesScreen = () => {
   const { cryptoId } = useLocalSearchParams();
   const router = useRouter();
 
-  const fixedVsCurrency = "USDT";
-
   const [tabBarVisible, setTabBarVisible] = useRecoilState(tabBarVisibleAtom);
 
   const isTargetPriceInitialized = useRef<boolean>(false);
@@ -61,6 +59,7 @@ const TradesScreen = () => {
     TradePriceItem[]
   >([]);
 
+  const [currentExchangeInfo, setCurrentExchangeInfo] = useState<ExchangeInfo>()
   const [currentCryptoSymbol, setCurrentCryptoSymbol] = useState<string>("BTC");
   const [currentCryptoMarketPrice, setCurrentCryptoMarketPrice] =
     useState<number>(0);
@@ -68,7 +67,7 @@ const TradesScreen = () => {
     useState<TickerPriceChange>();
   const [avblUSDT, setAvblUSDT] = useState(500);
   const [avblCrypto, setAvblCrypto] = useState(0.1);
-  const [currentCryptoId, setCurrentCryptoId] = useState<string>("BTC");
+  const [currentCryptoId, setCurrentCryptoId] = useState<string>("BTCUSDT");
   const [currentTradeMode, setCurrentTradeMode] = useState<TradeMode>("Buy");
   const [currentTradeType, setCurrentTradeType] = useState<TradeType>("Market");
   const [targetPrice, setTargetPrice] = useState<number>(0);
@@ -85,15 +84,15 @@ const TradesScreen = () => {
         process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/exchangeInfo`,
         {
           params: {
-            symbol: `${currentCryptoId.toUpperCase()}${fixedVsCurrency}`,
+            symbol: currentCryptoId
           },
         },
       );
 
+      setCurrentExchangeInfo(response.data);
+
       if (response.data?.symbols?.[0]) {
-        setCurrentCryptoSymbol(
-          response.data?.symbols?.[0]?.symbol?.replace(fixedVsCurrency, ""),
-        );
+        setCurrentCryptoSymbol(response.data?.symbols?.[0]?.symbol);
       }
 
       return response.data;
@@ -109,7 +108,7 @@ const TradesScreen = () => {
         process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/ticker/price`,
         {
           params: {
-            symbol: `${currentCryptoId.toUpperCase()}${fixedVsCurrency}`,
+            symbol: currentCryptoId,
           },
         },
       );
@@ -134,7 +133,7 @@ const TradesScreen = () => {
         process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/depth`,
         {
           params: {
-            symbol: `${currentCryptoId.toUpperCase()}${fixedVsCurrency}`,
+            symbol: currentCryptoId,
           },
         },
       );
@@ -155,7 +154,7 @@ const TradesScreen = () => {
         process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/ticker/24hr`,
         {
           params: {
-            symbol: `${currentCryptoSymbol.toUpperCase()}${fixedVsCurrency}`,
+            symbol: currentCryptoSymbol
           },
         },
       );
@@ -331,7 +330,7 @@ const TradesScreen = () => {
         <OrderRowHeaderContainer>
           <OrderHeaderLeftContainer>
             <OrderSymbolText>
-              {currentCryptoSymbol}/{fixedVsCurrency}
+              {currentCryptoSymbol}
             </OrderSymbolText>
             <OrderTypeModeContainer>
               <OrderTypeModeText tradeType={order.tradeType}>
@@ -397,7 +396,6 @@ const TradesScreen = () => {
           >
             <CryptoTitleText>
               {currentCryptoSymbol}
-              {fixedVsCurrency}
             </CryptoTitleText>
             <DownArrowIcon source={require("@/assets/images/icons/down.png")} />
           </CryptoTitleContainer>
@@ -418,7 +416,7 @@ const TradesScreen = () => {
               </TradePriceHintTextContainer>
               <TradePriceHintTextContainer direction="right">
                 <TradePriceHintText>Amount</TradePriceHintText>
-                <TradePriceHintText>({fixedVsCurrency})</TradePriceHintText>
+                <TradePriceHintText>({currentExchangeInfo?.symbols?.[0]?.quoteAsset})</TradePriceHintText>
               </TradePriceHintTextContainer>
             </TradPriceHintContainer>
             {renderPriceRow("positive", dummyPositivePrices)}
@@ -478,7 +476,7 @@ const TradesScreen = () => {
               <CurrencyStandardContainer>
                 <CurrencyStandardText>
                   {currentTradeMode === "Buy"
-                    ? fixedVsCurrency
+                    ? currentExchangeInfo?.symbols?.[0]?.quoteAsset
                     : currentCryptoSymbol}
                 </CurrencyStandardText>
               </CurrencyStandardContainer>
@@ -516,7 +514,7 @@ const TradesScreen = () => {
                     ? avblUSDT.toFixed(2)
                     : avblCrypto.toFixed(2)}{" "}
                   {currentTradeMode === "Buy"
-                    ? fixedVsCurrency
+                    ? currentExchangeInfo?.symbols?.[0]?.quoteAsset
                     : currentCryptoSymbol}
                 </CurrencyHintValueText>
               </CurrencyHintRow>
