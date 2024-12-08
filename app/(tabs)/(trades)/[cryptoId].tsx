@@ -59,7 +59,8 @@ const TradesScreen = () => {
     TradePriceItem[]
   >([]);
 
-  const [currentExchangeInfo, setCurrentExchangeInfo] = useState<ExchangeInfo>()
+  const [currentExchangeInfo, setCurrentExchangeInfo] =
+    useState<ExchangeInfo>();
   const [currentCryptoSymbol, setCurrentCryptoSymbol] = useState<string>("BTC");
   const [currentCryptoMarketPrice, setCurrentCryptoMarketPrice] =
     useState<number>(0);
@@ -84,7 +85,7 @@ const TradesScreen = () => {
         process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/exchangeInfo`,
         {
           params: {
-            symbol: currentCryptoId
+            symbol: currentCryptoId,
           },
         },
       );
@@ -123,7 +124,7 @@ const TradesScreen = () => {
       return response.data;
     },
     retry: 1,
-    refetchInterval: 2000,
+    refetchInterval: 1000,
   });
 
   const getOrderBooksQuery = useQuery<OrderBook>({
@@ -143,7 +144,7 @@ const TradesScreen = () => {
       return response.data;
     },
     retry: 1,
-    refetchInterval: 2000,
+    refetchInterval: 1000,
     enabled: currentCryptoSymbol !== "",
   });
 
@@ -154,7 +155,7 @@ const TradesScreen = () => {
         process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/ticker/24hr`,
         {
           params: {
-            symbol: currentCryptoSymbol
+            symbol: currentCryptoSymbol,
           },
         },
       );
@@ -329,9 +330,7 @@ const TradesScreen = () => {
       <OrderRowContainer key={index + order.createdAt.toLocaleDateString()}>
         <OrderRowHeaderContainer>
           <OrderHeaderLeftContainer>
-            <OrderSymbolText>
-              {currentCryptoSymbol}
-            </OrderSymbolText>
+            <OrderSymbolText>{currentCryptoSymbol}</OrderSymbolText>
             <OrderTypeModeContainer>
               <OrderTypeModeText tradeType={order.tradeType}>
                 {order.tradeType} / {order.tradeMode}
@@ -394,9 +393,7 @@ const TradesScreen = () => {
               router.navigate(`/(tabs)/(home)/crypto-search`);
             }}
           >
-            <CryptoTitleText>
-              {currentCryptoSymbol}
-            </CryptoTitleText>
+            <CryptoTitleText>{currentCryptoSymbol}</CryptoTitleText>
             <DownArrowIcon source={require("@/assets/images/icons/down.png")} />
           </CryptoTitleContainer>
           <CryptoFluctuationText
@@ -416,7 +413,9 @@ const TradesScreen = () => {
               </TradePriceHintTextContainer>
               <TradePriceHintTextContainer direction="right">
                 <TradePriceHintText>Amount</TradePriceHintText>
-                <TradePriceHintText>({currentExchangeInfo?.symbols?.[0]?.quoteAsset})</TradePriceHintText>
+                <TradePriceHintText>
+                  ({currentExchangeInfo?.symbols?.[0]?.quoteAsset})
+                </TradePriceHintText>
               </TradePriceHintTextContainer>
             </TradPriceHintContainer>
             {renderPriceRow("positive", dummyPositivePrices)}
