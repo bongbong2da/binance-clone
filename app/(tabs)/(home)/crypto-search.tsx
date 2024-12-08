@@ -190,7 +190,7 @@ const CryptoSearch = () => {
           {searchResult?.map((symbol, index) => {
             return (
               <CryptoRow
-                key={symbol.symbol.symbol}
+                key={index + symbol.symbol.symbol}
                 onPress={() => handlePressCrypto(symbol.symbol.symbol)}
               >
                 <CryptoNameContainer>
