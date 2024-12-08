@@ -6,40 +6,36 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ActivityIndicator, Pressable, Text } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import { useRecoilState } from "recoil";
+import { standardCurrencyAtom } from "@/recoil/atoms/CurrencyAtoms";
+import { ExchangeInfo, TickerPrice } from "@/types/binance/types";
+import _ from "lodash";
 
-interface CoinInterface {
-  api_symbol: string;
-  id: string;
-  large: string;
-  market_cap_rank: number;
-  name: string;
-  symbol: string;
-  thumb: string;
-}
-
-interface CoinWithPriceInterface {
-  coin: CoinInterface;
-  price: {
-    isFetched: boolean;
-    price: number;
-  };
+interface SymbolWithPrice {
+  symbol: any;
+  price: TickerPrice;
 }
 
 const CryptoSearch = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [currentSearchKeyword, setCurrentSearchKeyword] = useState<string>("");
-  const [searchHistory, setSearchHistory] = useState<string[]>([]);
-  const [searchResult, setSearchResult] = useState<CoinWithPriceInterface[]>(
-    [],
-  );
+  const [standardCurrency, setStandardCurrency] =
+    useRecoilState(standardCurrencyAtom);
 
-  const getCoinsQuery = useQuery<{ coins: CoinInterface[] }>({
+  const [currentExchangeInfo, setCurrentExchangeInfo] =
+    useState<ExchangeInfo>();
+  const [currentSearchKeyword, setCurrentSearchKeyword] = useState<string>("");
+  const [currentSearchedCoin, setCurrentSearchedCoin] = useState<any[]>([]);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [searchResult, setSearchResult] = useState<SymbolWithPrice[]>([]);
+
+  const getCoinsQuery = useQuery({
     queryKey: ["getCoins", currentSearchKeyword],
     queryFn: async () => {
+      console.log("currentSearchKeyword", currentSearchKeyword);
       const response = await axios.get(
-        process.env.EXPO_PUBLIC_GECKCO_API_URL + "/search",
+        process.env.EXPO_PUBLIC_GECKCO_API_URL + `/search`,
         {
           params: {
             query: currentSearchKeyword,
@@ -47,55 +43,54 @@ const CryptoSearch = () => {
         },
       );
 
-      const coins = response.data.coins;
+      setCurrentSearchedCoin(response.data.coins);
 
-      const coinsWithPrice = coins.map(
-        (coin: CoinInterface, index: number) => ({
-          coin,
-          price: { isFetched: false, price: 0 },
+      const prices: SymbolWithPrice[] = [];
+
+      await Promise.all(
+        response.data.coins.map(async (coin: any) => {
+          try {
+            const response = await getTickerPrice(coin.symbol);
+            prices.push({ symbol: coin, price: response });
+          } catch (e) {
+            //
+          }
         }),
       );
-      setSearchResult(coinsWithPrice);
+
+      setSearchResult(prices);
+
       return response.data;
     },
   });
 
-  const getCryptoPrice = async () => {
-    if (searchResult[0]?.price.isFetched) return;
-    const coinsWithPrice: CoinWithPriceInterface[] = [];
+  const getExchangeInfo = useQuery<ExchangeInfo>({
+    queryKey: ["getExchangeInfo", currentSearchKeyword],
+    queryFn: async () => {
+      const response = await axios.get(
+        process.env.EXPO_PUBLIC_BINANCE_API_URL +
+          `/api/v3/exchangeInfo?symbol=${currentSearchKeyword.toUpperCase() + standardCurrency}`,
+      );
 
-    try {
-      searchResult.map(async (coinWithPrice, index) => {
-        if (index > 5) return;
-        const cryptoPrice = await queryClient.fetchQuery({
-          queryKey: ["getCoinPrice", coinWithPrice.coin?.id],
-          queryFn: async () => {
-            return await axios.get(
-              process.env.EXPO_PUBLIC_GECKCO_API_URL + "/simple/price",
-              {
-                params: {
-                  ids: coinWithPrice.coin?.id,
-                  vs_currencies: "usd",
-                },
-              },
-            );
-          },
-          staleTime: 1000 * 60 * 5,
-          retryDelay: 1000 * 3,
-          retry: 1,
-        });
-        const price =
-          cryptoPrice.data[Object.keys(cryptoPrice.data)[0]].usd || 0;
-        coinsWithPrice.push({
-          coin: coinWithPrice.coin,
-          price: { isFetched: true, price },
-        });
-      });
+      setCurrentExchangeInfo(response.data);
 
-      setSearchResult(coinsWithPrice);
-    } catch (e) {
-      console.error(e);
-    }
+      return response.data;
+    },
+  });
+
+  const getTickerPrice = async (symbol: string) => {
+    return queryClient.fetchQuery({
+      queryKey: ["getTickerPrice", symbol],
+      queryFn: async () => {
+        const response = await axios.get(
+          process.env.EXPO_PUBLIC_BINANCE_API_URL +
+            `/api/v3/ticker/price?symbol=${symbol.toUpperCase() + standardCurrency}`,
+        );
+
+        return response.data;
+      },
+      retry: false,
+    });
   };
 
   const init = async () => {
@@ -113,7 +108,7 @@ const CryptoSearch = () => {
   };
 
   const handlePressSearch = async () => {
-    getCoinsQuery.refetch();
+    getExchangeInfo.refetch();
   };
 
   const handlePressRemoveHistory = async () => {
@@ -121,19 +116,21 @@ const CryptoSearch = () => {
     AsyncStorage.removeItem("coin_search_keywords");
   };
 
-  const handlePressCrypto = (coin: CoinInterface) => {
-    if (!searchHistory.includes(coin.symbol)) {
-      const newKeywords = [coin.symbol, ...searchHistory];
+  const handlePressCrypto = (symbol: string) => {
+    if (!searchHistory.includes(symbol)) {
+      const newKeywords = [symbol, ...searchHistory];
       setSearchHistory(newKeywords);
       AsyncStorage.setItem("coin_search_keywords", newKeywords.join(","));
     }
 
-    router.navigate(`/(tabs)/(home)/${coin.id}`);
+    router.navigate(
+      `/(tabs)/(home)/${symbol.toUpperCase() + standardCurrency}`,
+    );
   };
 
   const handlePressHistoryKeyword = (keyword: string) => {
     setCurrentSearchKeyword(keyword);
-    getCoinsQuery.refetch();
+    getExchangeInfo.refetch();
   };
 
   useEffect(() => {
@@ -149,8 +146,7 @@ const CryptoSearch = () => {
         <SearchInputContainer>
           <SearchIcon source={require("@/assets/images/icons/search.png")} />
           <SearchInput
-            value={currentSearchKeyword}
-            onChangeText={setCurrentSearchKeyword}
+            onChangeText={_.debounce(setCurrentSearchKeyword, 1000)}
             placeholder={"🔥 BNB"}
           />
           <SearchButton hitSlop={24} onPress={handlePressSearch}>
@@ -158,7 +154,7 @@ const CryptoSearch = () => {
           </SearchButton>
         </SearchInputContainer>
       </HeaderContainer>
-      {searchHistory.length > 0 && getCoinsQuery.data?.coins?.length === 0 && (
+      {searchHistory.length > 0 && currentSearchKeyword === "" && (
         <SearchHistoryContainer>
           <SearchHistoryTitleContainer>
             <SearchText>Search History</SearchText>
@@ -182,7 +178,7 @@ const CryptoSearch = () => {
           </SearchKeywordContainer>
         </SearchHistoryContainer>
       )}
-      {getCoinsQuery.data && getCoinsQuery.data.coins?.length > 0 && (
+      {getExchangeInfo.data && searchResult?.length > 0 && (
         <ResultContainer
           contentContainerStyle={{
             padding: 16,
@@ -191,23 +187,22 @@ const CryptoSearch = () => {
           <ResultHeaderContainer>
             <ResultHeaderTitle>Results</ResultHeaderTitle>
           </ResultHeaderContainer>
-          {getCoinsQuery.isFetching && <ActivityIndicator />}
-          {searchResult.map((cryptoWithPrice, index) => {
-            if (index > 5) return null;
+          {getExchangeInfo.isFetching && <ActivityIndicator />}
+          {searchResult?.map((symbol, index) => {
             return (
               <CryptoRow
-                key={cryptoWithPrice?.coin?.id}
-                onPress={() => handlePressCrypto(cryptoWithPrice.coin)}
+                key={symbol.symbol.symbol}
+                onPress={() => handlePressCrypto(symbol.symbol.symbol)}
               >
                 <CryptoNameContainer>
-                  <CryptoLogo source={{ uri: cryptoWithPrice?.coin?.thumb }} />
+                  <CryptoLogo source={{ uri: symbol.symbol?.thumb }} />
                   <CryptoNameText>
-                    {cryptoWithPrice?.coin?.symbol}
+                    {symbol.symbol.symbol + standardCurrency}
                   </CryptoNameText>
                 </CryptoNameContainer>
-                {cryptoWithPrice?.price?.isFetched && (
+                {symbol.price?.price && (
                   <CryptoPriceContainer>
-                    <Text>{cryptoWithPrice?.price?.price}</Text>
+                    <Text>{Number(symbol.price?.price).toFixed(2)}</Text>
                   </CryptoPriceContainer>
                 )}
               </CryptoRow>
