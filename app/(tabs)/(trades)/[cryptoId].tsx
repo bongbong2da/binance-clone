@@ -365,7 +365,6 @@ const TradesScreen = () => {
 
   useEffect(() => {
     if (cryptoId && typeof cryptoId === "string") {
-      console.log(`setting ${cryptoId}`);
       setCurrentCryptoId(cryptoId);
     }
   }, [cryptoId]);

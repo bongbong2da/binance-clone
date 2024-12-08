@@ -33,7 +33,6 @@ const CryptoSearch = () => {
   const getCoinsQuery = useQuery({
     queryKey: ["getCoins", currentSearchKeyword],
     queryFn: async () => {
-      console.log("currentSearchKeyword", currentSearchKeyword);
       const response = await axios.get(
         process.env.EXPO_PUBLIC_GECKCO_API_URL + `/search`,
         {
