@@ -11,8 +11,6 @@ import {
   TickerPrice,
   TickerPriceChange,
 } from "@/types/binance/types";
-import { useRecoilState } from "recoil";
-import { standardCurrencyAtom } from "@/recoil/atoms/CurrencyAtoms";
 
 type ChartInterval = "1s" | "1d" | "1w" | "1m" | "3m" | "5m" | "1M";
 
@@ -20,12 +18,6 @@ const CryptoDetail = () => {
   const router = useRouter();
   const { cryptoId } = useLocalSearchParams();
 
-  const [standardCurrency, setStandardCurrency] =
-    useRecoilState(standardCurrencyAtom);
-
-  const [standardTimestamp, setStandardTimestamp] = useState<number>(
-    new Date().getTime(),
-  );
   const [currentExchangeInfo, setCurrentExchangeInfo] =
     useState<ExchangeInfo>();
   const [currentTickerPrice, setCurrentTickerPrice] = useState<TickerPrice>();

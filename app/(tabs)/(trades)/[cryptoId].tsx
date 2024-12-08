@@ -626,11 +626,6 @@ const CryptoTitleContainer = styled.Pressable`
   gap: 8px;
 `;
 
-const CryptoLogoImage = styled.Image`
-  width: 20px;
-  height: 20px;
-`;
-
 const CryptoTitleText = styled.Text`
   font-size: 24px;
 `;
@@ -824,12 +819,6 @@ const CurrencyStandardText = styled.Text`
 const ThumbImage = styled.Image`
   width: 20px;
   height: 20px;
-`;
-
-const MarkerImage = styled.Image`
-  width: 8px;
-  height: 8px;
-  tint-color: #a3a3a3;
 `;
 
 const CurrencySliderAmountContainer = styled.View`

@@ -307,8 +307,6 @@ const ResultHeaderTitle = styled.Text`
   font-size: 12px;
 `;
 
-const EmptyContainer = styled.View``;
-
 const CryptoRow = styled.Pressable`
   padding: 12px 0;
   flex-direction: row;
