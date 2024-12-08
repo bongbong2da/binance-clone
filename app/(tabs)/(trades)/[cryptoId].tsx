@@ -335,7 +335,7 @@ const TradesScreen = () => {
           <OrderHeaderLeftContainer>
             <OrderSymbolText>{order.ticker.symbol}</OrderSymbolText>
             <OrderTypeModeContainer>
-              <OrderTypeModeText tradeType={order.tradeType}>
+              <OrderTypeModeText tradeMode={order.tradeMode}>
                 {order.tradeType} / {order.tradeMode}
               </OrderTypeModeText>
               <OrderDateText>
@@ -943,10 +943,10 @@ const OrderTypeModeContainer = styled.View`
   flex-direction: row;
   gap: 8px;
 `;
-const OrderTypeModeText = styled.Text<{ tradeType: TradeType }>`
+const OrderTypeModeText = styled.Text<{ tradeMode: TradeMode }>`
   font-size: 12px;
   color: ${(props) =>
-    props.tradeType === "Market"
+    props.tradeMode === "Buy"
       ? Colors.positiveCandleColor
       : Colors.negativeCandleColor};
 `;
