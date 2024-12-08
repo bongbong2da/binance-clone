@@ -168,15 +168,7 @@ const TradesScreen = () => {
     staleTime: 1000,
   });
 
-  const handlePressPriceRow = (
-    type: "positive" | "negative",
-    price: number,
-  ) => {
-    if (type === "positive") {
-      setCurrentTradeMode("Buy");
-    } else {
-      setCurrentTradeMode("Sell");
-    }
+  const handlePressPriceRow = (price: number) => {
     setCurrentTradeType("Limit");
     setTargetPrice(price);
   };
@@ -196,7 +188,7 @@ const TradesScreen = () => {
         <TradePriceRowContainer
           key={`${index}-${item.price}`}
           type={type}
-          onPress={() => handlePressPriceRow(type, item.price)}
+          onPress={() => handlePressPriceRow(item.price)}
         >
           <TradePriceText type={type}>{priceEightDigit}</TradePriceText>
           <TradePriceText type={type}>{amountFourDigit}</TradePriceText>
