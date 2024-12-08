@@ -139,7 +139,7 @@ const TradesScreen = () => {
         },
       );
 
-      generateDummyPrices(response.data);
+      generateOrderBook(response.data);
 
       return response.data;
     },
@@ -199,7 +199,7 @@ const TradesScreen = () => {
     });
   };
 
-  const generateDummyPrices = (orderBook: OrderBook) => {
+  const generateOrderBook = (orderBook: OrderBook) => {
     const targetAsks = orderBook.asks.slice(0, 5);
     const targetBids = orderBook.bids.slice(0, 5);
 
