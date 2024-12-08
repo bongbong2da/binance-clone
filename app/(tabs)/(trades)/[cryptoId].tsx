@@ -390,11 +390,16 @@ const TradesScreen = () => {
       </HeaderContainer>
       <ScrollWrapper>
         <CryptoHeaderContainer>
-          <CryptoTitleContainer>
+          <CryptoTitleContainer
+            onPress={() => {
+              router.navigate(`/(tabs)/(home)/crypto-search`);
+            }}
+          >
             <CryptoTitleText>
               {currentCryptoSymbol}
               {fixedVsCurrency}
             </CryptoTitleText>
+            <DownArrowIcon source={require("@/assets/images/icons/down.png")} />
           </CryptoTitleContainer>
           <CryptoFluctuationText
             isPositive={calculateIsPositive(
@@ -608,7 +613,7 @@ const CryptoHeaderContainer = styled.View`
   padding: 16px 8px;
 `;
 
-const CryptoTitleContainer = styled.View`
+const CryptoTitleContainer = styled.Pressable`
   flex-direction: row;
   align-items: center;
   gap: 8px;
@@ -621,6 +626,11 @@ const CryptoLogoImage = styled.Image`
 
 const CryptoTitleText = styled.Text`
   font-size: 24px;
+`;
+
+const DownArrowIcon = styled.Image`
+  width: 12px;
+  height: 12px;
 `;
 
 const CryptoFluctuationText = styled.Text<{ isPositive?: boolean }>`
