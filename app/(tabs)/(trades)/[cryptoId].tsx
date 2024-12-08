@@ -30,7 +30,7 @@ interface OrderBook {
 }
 
 interface OrderInterface {
-  price: "Market" | number;
+  ticker: TickerPrice;
   amount: number;
   tradeMode: TradeMode;
   tradeType: TradeType;
@@ -273,7 +273,10 @@ const TradesScreen = () => {
     }
 
     const order: OrderInterface = {
-      price: targetPrice,
+      ticker: {
+        symbol: currentCryptoSymbol,
+        price: targetPrice.toString(),
+      },
       amount: Number(currencyAmount),
       tradeMode: currentTradeMode,
       tradeType: currentTradeType,
@@ -330,7 +333,7 @@ const TradesScreen = () => {
       <OrderRowContainer key={index + order.createdAt.toLocaleDateString()}>
         <OrderRowHeaderContainer>
           <OrderHeaderLeftContainer>
-            <OrderSymbolText>{currentCryptoSymbol}</OrderSymbolText>
+            <OrderSymbolText>{order.ticker.symbol}</OrderSymbolText>
             <OrderTypeModeContainer>
               <OrderTypeModeText tradeType={order.tradeType}>
                 {order.tradeType} / {order.tradeMode}
@@ -353,7 +356,7 @@ const TradesScreen = () => {
           </OrderFooterRow>
           <OrderFooterRow>
             <OrderFooterLabel>Price</OrderFooterLabel>
-            <OrderFooterValueText>{order.price}</OrderFooterValueText>
+            <OrderFooterValueText>{order.ticker.price}</OrderFooterValueText>
           </OrderFooterRow>
         </OrderFooterContainer>
       </OrderRowContainer>
