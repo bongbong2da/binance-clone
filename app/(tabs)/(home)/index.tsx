@@ -9,36 +9,9 @@ import { useNavigation } from "expo-router";
 import { useRecoilState } from "recoil";
 import { tabBarVisibleAtom } from "@/recoil/atoms/UIAtoms";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { GeckoTrendingCoin } from "@/types/gecko/types";
 
 type FluctuationType = "positive" | "negative" | "neutral";
-
-interface CoinItemInterface {
-  id: string;
-  coin_id: number;
-  name: string;
-  symbol: string;
-  market_cap_rank: number;
-  data: {
-    price: number;
-    price_btc: string;
-    price_change_percentage_24h: {
-      [key: string]: number;
-    };
-  };
-  content: null;
-  market_cap: string;
-  market_cap_btc: string;
-  price: number;
-  price_btc: string;
-  sparkline: string;
-  total_volume: string;
-  total_volume_btc: string;
-  large: string;
-  score: number;
-  slug: string;
-  small: string;
-  thumb: string;
-}
 
 const HomeScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
@@ -60,7 +33,7 @@ const HomeScreen = () => {
     return btcToUsd.toFixed(5);
   };
 
-  const handlePressCrypto = (crypto: CoinItemInterface) => {
+  const handlePressCrypto = (crypto: GeckoTrendingCoin) => {
     navigation.push("CryptoViewScreen", {
       cryptoId: crypto.id,
     });
@@ -100,7 +73,7 @@ const HomeScreen = () => {
         </PromotionContainer>
         <PromotionCoinsContainer>
           {getExchangesQuery.data?.data?.coins?.map(
-            (coin: { item: CoinItemInterface }, index: number) => {
+            (coin: { item: GeckoTrendingCoin }, index: number) => {
               return (
                 <PromotionCoinButton
                   key={index + coin.item.id}

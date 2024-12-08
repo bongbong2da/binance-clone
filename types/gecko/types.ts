@@ -78,3 +78,31 @@ export interface GeckoCoinDetail {
   watchlist_portfolio_users: number;
   web_slug: string;
 }
+
+export interface GeckoTrendingCoin {
+  id: string;
+  coin_id: number;
+  name: string;
+  symbol: string;
+  market_cap_rank: number;
+  data: {
+    price: number;
+    price_btc: string;
+    price_change_percentage_24h: {
+      [key: string]: number;
+    };
+  };
+  content: null;
+  market_cap: string;
+  market_cap_btc: string;
+  price: number;
+  price_btc: string;
+  sparkline: string;
+  total_volume: string;
+  total_volume_btc: string;
+  large: string;
+  score: number;
+  slug: string;
+  small: string;
+  thumb: string;
+}
