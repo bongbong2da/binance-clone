@@ -5,7 +5,7 @@ import axios from "axios";
 import styled from "styled-components/native";
 import { Dimensions, Text } from "react-native";
 import { Colors } from "@/constants/Colors";
-import { CandlestickChart } from "react-native-wagmi-charts";
+import { CandlestickChart, LineChart } from "react-native-wagmi-charts";
 import {
   ExchangeInfo,
   TickerPrice,
@@ -110,8 +110,8 @@ const CryptoDetail = () => {
         },
       );
 
-      setCurrentPriceChart(convertToChartValue(response.data));
-      setCurrentVolumeChart(convertToChartValue(response.data));
+      setCurrentPriceChart(convertToChartValues("candlestick", response.data));
+      setCurrentVolumeChart(convertToChartValues("line", response.data));
 
       return response.data;
     },
@@ -180,15 +180,25 @@ const CryptoDetail = () => {
     }
   };
 
-  const convertToChartValue = (prices: number[][]) => {
+  const convertToChartValues = (
+    type: "candlestick" | "line",
+    prices: number[][],
+  ) => {
     if (!prices) return [];
-    return prices.map((price) => ({
-      timestamp: price[0],
-      open: price[1],
-      high: price[2],
-      low: price[3],
-      close: price[4],
-    }));
+    if (type === "candlestick") {
+      return prices.map((price) => ({
+        timestamp: price[0],
+        open: price[1],
+        high: price[2],
+        low: price[3],
+        close: price[4],
+      }));
+    } else {
+      return prices.map((price) => ({
+        timestamp: price[0],
+        value: price[7],
+      }));
+    }
   };
 
   const handlePressInterval = (interval: ChartInterval) => {
@@ -298,16 +308,28 @@ const CryptoDetail = () => {
           </IntervalButton>
         </IntervalSelectContainer>
         {currentPriceChart.length !== 0 && (
-          <CandlestickChart.Provider data={currentPriceChart}>
-            <CandlestickChart height={Dimensions.get("window").height * 0.3}>
-              <CandlestickChart.Candles useAnimations={false} />
-              <CandlestickChart.Crosshair>
-                <CandlestickChart.Tooltip />
-              </CandlestickChart.Crosshair>
-            </CandlestickChart>
-            <CandlestickChart.PriceText />
-            <CandlestickChart.DatetimeText />
-          </CandlestickChart.Provider>
+          <>
+            <CandlestickChart.Provider data={currentPriceChart}>
+              <CandlestickChart height={Dimensions.get("window").height * 0.3}>
+                <CandlestickChart.Candles useAnimations={false} />
+                <CandlestickChart.Crosshair>
+                  <CandlestickChart.Tooltip />
+                </CandlestickChart.Crosshair>
+              </CandlestickChart>
+              <CandlestickChart.PriceText />
+              <CandlestickChart.DatetimeText />
+            </CandlestickChart.Provider>
+            <LineChart.Provider data={currentVolumeChart}>
+              <LineChart height={Dimensions.get("window").height * 0.1}>
+                <LineChart.Path width={2} color={Colors.light.tint}>
+                  <LineChart.Gradient />
+                </LineChart.Path>
+                <LineChart.Tooltip />
+              </LineChart>
+              <LineChart.PriceText />
+              <LineChart.DatetimeText />
+            </LineChart.Provider>
+          </>
         )}
         <OptionButtonContainer>
           <OptionButton type="buy" onPress={handlePressTrade}>
