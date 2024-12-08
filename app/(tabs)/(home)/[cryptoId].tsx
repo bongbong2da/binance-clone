@@ -14,7 +14,7 @@ import {
 import { useRecoilState } from "recoil";
 import { standardCurrencyAtom } from "@/recoil/atoms/CurrencyAtoms";
 
-const CryptoId = () => {
+const CryptoDetail = () => {
   const router = useRouter();
   const { cryptoId } = useLocalSearchParams();
 
@@ -466,4 +466,4 @@ const OptionButtonText = styled.Text`
   letter-spacing: 0.6;
 `;
 
-export default CryptoId;
+export default CryptoDetail;
