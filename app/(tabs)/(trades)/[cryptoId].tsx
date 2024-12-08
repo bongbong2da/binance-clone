@@ -244,7 +244,7 @@ const TradesScreen = () => {
 
       return maxValue.toFixed(4);
     } else {
-      return 0;
+      return avblCrypto.toFixed(4);
     }
   };
 
@@ -265,13 +265,18 @@ const TradesScreen = () => {
       return;
     }
 
-    setCurrencyAmount("");
-    setSlideValue(0);
-
     if (currentTradeMode === "Buy") {
+      if (Number(currencyAmount) > avblUSDT) {
+        return;
+      }
+
       setAvblUSDT(avblUSDT - Number(currencyAmount));
       setAvblCrypto(avblCrypto + Number(currencyAmount) / targetPrice);
     } else {
+      if (Number(currencyAmount) > avblCrypto) {
+        return;
+      }
+
       setAvblUSDT(avblUSDT + Number(currencyAmount) * targetPrice);
       setAvblCrypto(avblCrypto - Number(currencyAmount));
     }
@@ -286,6 +291,9 @@ const TradesScreen = () => {
       tradeType: currentTradeType,
       createdAt: new Date(),
     };
+
+    setCurrencyAmount("");
+    setSlideValue(0);
 
     setOrderList([...orderList, order]);
   };
@@ -522,7 +530,7 @@ const TradesScreen = () => {
                     : avblCrypto.toFixed(2)}{" "}
                   {currentTradeMode === "Buy"
                     ? currentExchangeInfo?.symbols?.[0]?.quoteAsset
-                    : currentCryptoSymbol}
+                    : currentExchangeInfo?.symbols?.[0]?.baseAsset}
                 </CurrencyHintValueText>
               </CurrencyHintRow>
               <CurrencyHintRow>
