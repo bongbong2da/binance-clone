@@ -103,7 +103,7 @@ const TradesScreen = () => {
   });
 
   const getTickerPriceQuery = useQuery<TickerPrice>({
-    queryKey: ["getTickerPrice", currentCryptoId],
+    queryKey: ["getTickerPriceQuery", currentCryptoId],
     queryFn: async () => {
       const response = await axios.get(
         process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/ticker/price`,
@@ -426,7 +426,7 @@ const TradesScreen = () => {
             {renderPriceRow("positive", dummyPositivePrices)}
             <TradeCurrentPriceContainer>
               <TradeCurrentPriceText status={"positive"}>
-                {Number(currentCryptoMarketPrice).toFixed(2)}
+                {Number(currentCryptoMarketPrice).toFixed(4)}
               </TradeCurrentPriceText>
             </TradeCurrentPriceContainer>
             {renderPriceRow("negative", dummyNegativePrices)}
