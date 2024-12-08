@@ -161,7 +161,7 @@ const CryptoDetail = () => {
   };
 
   const handlePressTrade = () => {
-    router.navigate(`/(tabs)/(trades)/${currentExchangeInfo?.symbols[0]}`);
+    router.navigate(`/(tabs)/(trades)/${currentExchangeInfo?.symbols?.[0]?.symbol}`);
   };
 
   return (
