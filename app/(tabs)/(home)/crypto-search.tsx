@@ -273,6 +273,7 @@ const SearchHistoryTitleContainer = styled.View`
 `;
 
 const SearchKeywordContainer = styled.View`
+  flex-wrap: wrap;
   flex-direction: row;
   padding: 16px 0;
   gap: 8px;
