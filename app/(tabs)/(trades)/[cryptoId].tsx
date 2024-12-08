@@ -484,7 +484,7 @@ const TradesScreen = () => {
                 <CurrencyStandardText>
                   {currentTradeMode === "Buy"
                     ? currentExchangeInfo?.symbols?.[0]?.quoteAsset
-                    : currentCryptoSymbol}
+                    : currentExchangeInfo?.symbols?.[0]?.baseAsset}
                 </CurrencyStandardText>
               </CurrencyStandardContainer>
             </CurrencyAmountContainer>
