@@ -261,6 +261,10 @@ const TradesScreen = () => {
   };
 
   const handleConfirmOrder = () => {
+    if (Number(currencyAmount) === 0) {
+      return;
+    }
+
     setCurrencyAmount("");
     setSlideValue(0);
 
