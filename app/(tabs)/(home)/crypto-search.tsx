@@ -128,7 +128,7 @@ const CryptoSearch = () => {
       AsyncStorage.setItem("coin_search_keywords", newKeywords.join(","));
     }
 
-    router.navigate(`/(tabs)/(home)/crypto/${coin.id}`);
+    router.navigate(`/(tabs)/(home)/${coin.id}`);
   };
 
   const handlePressHistoryKeyword = (keyword: string) => {
