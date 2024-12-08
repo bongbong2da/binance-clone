@@ -85,7 +85,7 @@ const TradesScreen = () => {
         process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/exchangeInfo`,
         {
           params: {
-            symbol: `${currentCryptoSymbol}${fixedVsCurrency}`,
+            symbol: `${currentCryptoId.toUpperCase()}${fixedVsCurrency}`,
           },
         },
       );
@@ -109,7 +109,7 @@ const TradesScreen = () => {
         process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/ticker/price`,
         {
           params: {
-            symbol: `${currentCryptoSymbol}${fixedVsCurrency}`,
+            symbol: `${currentCryptoId.toUpperCase()}${fixedVsCurrency}`,
           },
         },
       );
@@ -134,7 +134,7 @@ const TradesScreen = () => {
         process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/depth`,
         {
           params: {
-            symbol: `${currentCryptoSymbol}${fixedVsCurrency}`,
+            symbol: `${currentCryptoId.toUpperCase()}${fixedVsCurrency}`,
           },
         },
       );
@@ -155,7 +155,7 @@ const TradesScreen = () => {
         process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/ticker/24hr`,
         {
           params: {
-            symbol: `${currentCryptoSymbol}${fixedVsCurrency}`,
+            symbol: `${currentCryptoSymbol.toUpperCase()}${fixedVsCurrency}`,
           },
         },
       );
@@ -358,6 +358,7 @@ const TradesScreen = () => {
 
   useEffect(() => {
     if (cryptoId && typeof cryptoId === "string") {
+      console.log(`setting ${cryptoId}`);
       setCurrentCryptoId(cryptoId);
     }
   }, [cryptoId]);

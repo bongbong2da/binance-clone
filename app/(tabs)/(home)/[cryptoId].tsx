@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import styled from "styled-components/native";
@@ -8,8 +8,7 @@ import { Colors } from "@/constants/Colors";
 import { LineChart } from "react-native-wagmi-charts";
 import { GeckoCoinDetail } from "@/types/gecko/types";
 
-const CryptoViewScreen = () => {
-  const navigation = useNavigation();
+const CryptoId = () => {
   const router = useRouter();
   const { cryptoId } = useLocalSearchParams();
 
@@ -98,7 +97,7 @@ const CryptoViewScreen = () => {
   };
 
   const handlePressTrade = () => {
-    router.navigate("/(tabs)/(trades)");
+    router.navigate(`/(tabs)/(trades)/${getCoinQuery.data?.symbol}`);
   };
 
   return (
@@ -409,4 +408,4 @@ const OptionButtonText = styled.Text`
   letter-spacing: 0.6;
 `;
 
-export default CryptoViewScreen;
+export default CryptoId;

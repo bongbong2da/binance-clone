@@ -3,9 +3,9 @@ import { Stack } from "expo-router";
 
 const TradesLayout = () => {
   return (
-    <Stack>
+    <Stack initialRouteName={"[cryptoId]"}>
       <Stack.Screen
-        name={"index"}
+        name={"[cryptoId]"}
         options={{ title: "Trades", headerShown: false }}
       />
     </Stack>

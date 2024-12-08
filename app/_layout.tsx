@@ -15,10 +15,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RecoilRoot } from "recoil";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { configureReanimatedLogger } from "react-native-reanimated";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
+
+configureReanimatedLogger({
+  strict: false,
+});
 
 const RootLayout = () => {
   const colorScheme = useColorScheme();
@@ -28,10 +33,8 @@ const RootLayout = () => {
   });
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
+    SplashScreen.hideAsync();
+  }, []);
 
   if (!loaded) {
     return null;

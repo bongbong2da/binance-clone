@@ -5,7 +5,7 @@ import { Colors } from "@/constants/Colors";
 import { Text } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useNavigation } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import { useRecoilState } from "recoil";
 import { tabBarVisibleAtom } from "@/recoil/atoms/UIAtoms";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -15,6 +15,7 @@ type FluctuationType = "positive" | "negative" | "neutral";
 
 const HomeScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const router = useRouter();
   const [tabBarVisible, setTabBarVisible] = useRecoilState(tabBarVisibleAtom);
 
   const getExchangesQuery = useQuery({
@@ -34,9 +35,7 @@ const HomeScreen = () => {
   };
 
   const handlePressCrypto = (crypto: GeckoTrendingCoin) => {
-    navigation.push("CryptoViewScreen", {
-      cryptoId: crypto.id,
-    });
+    router.navigate(`/(tabs)/(home)/${crypto.id}`);
   };
 
   useEffect(() => {

@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components/native";
-import { useNavigation } from "expo-router";
+import { useRouter } from "expo-router";
 import { Colors } from "@/constants/Colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ActivityIndicator, Pressable, Text } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 interface CoinInterface {
   api_symbol: string;
@@ -26,8 +25,8 @@ interface CoinWithPriceInterface {
   };
 }
 
-const CryptoSearchScreen = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
+const CryptoSearch = () => {
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const [currentSearchKeyword, setCurrentSearchKeyword] = useState<string>("");
@@ -110,7 +109,7 @@ const CryptoSearchScreen = () => {
   };
 
   const handlePressBack = () => {
-    navigation.goBack();
+    router.back();
   };
 
   const handlePressSearch = async () => {
@@ -129,9 +128,7 @@ const CryptoSearchScreen = () => {
       AsyncStorage.setItem("coin_search_keywords", newKeywords.join(","));
     }
 
-    navigation.push("CryptoViewScreen", {
-      cryptoId: coin.id,
-    });
+    router.navigate(`/(tabs)/(home)/crypto/${coin.id}`);
   };
 
   const handlePressHistoryKeyword = (keyword: string) => {
@@ -341,4 +338,4 @@ const CryptoLogo = styled.Image`
 
 const CryptoPriceContainer = styled.View``;
 
-export default CryptoSearchScreen;
+export default CryptoSearch;
