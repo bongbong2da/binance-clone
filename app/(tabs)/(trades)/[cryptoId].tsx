@@ -412,7 +412,9 @@ const TradesScreen = () => {
             <TradPriceHintContainer>
               <TradePriceHintTextContainer direction="left">
                 <TradePriceHintText>Price</TradePriceHintText>
-                <TradePriceHintText>({currentCryptoSymbol})</TradePriceHintText>
+                <TradePriceHintText>
+                  ({currentExchangeInfo?.symbols?.[0]?.baseAsset})
+                </TradePriceHintText>
               </TradePriceHintTextContainer>
               <TradePriceHintTextContainer direction="right">
                 <TradePriceHintText>Amount</TradePriceHintText>
@@ -523,7 +525,8 @@ const TradesScreen = () => {
               <CurrencyHintRow>
                 <CurrencyHintLabel>Max {currentTradeMode}</CurrencyHintLabel>
                 <CurrencyHintValueText>
-                  {calculateMaxBuy()} {currentCryptoSymbol}
+                  {calculateMaxBuy()}{" "}
+                  {currentExchangeInfo?.symbols?.[0]?.baseAsset}
                 </CurrencyHintValueText>
               </CurrencyHintRow>
               <CurrencyHintRow>
@@ -537,7 +540,8 @@ const TradesScreen = () => {
                 tradeMode={currentTradeMode}
               >
                 <OrderButtonText>
-                  {currentTradeMode} {currentCryptoSymbol}
+                  {currentTradeMode}{" "}
+                  {currentExchangeInfo?.symbols?.[0]?.baseAsset}
                 </OrderButtonText>
               </OrderButton>
             </ActionButtonContainer>
