@@ -5,7 +5,7 @@ import axios from "axios";
 import styled from "styled-components/native";
 import { Dimensions, Text } from "react-native";
 import { Colors } from "@/constants/Colors";
-import { LineChart } from "react-native-wagmi-charts";
+import { CandlestickChart } from "react-native-wagmi-charts";
 import {
   ExchangeInfo,
   TickerPrice,
@@ -14,6 +14,8 @@ import {
 import { useRecoilState } from "recoil";
 import { standardCurrencyAtom } from "@/recoil/atoms/CurrencyAtoms";
 
+type ChartInterval = "1s" | "1d" | "1w" | "1m" | "3m" | "5m" | "1M";
+
 const CryptoDetail = () => {
   const router = useRouter();
   const { cryptoId } = useLocalSearchParams();
@@ -21,6 +23,9 @@ const CryptoDetail = () => {
   const [standardCurrency, setStandardCurrency] =
     useRecoilState(standardCurrencyAtom);
 
+  const [standardTimestamp, setStandardTimestamp] = useState<number>(
+    new Date().getTime(),
+  );
   const [currentExchangeInfo, setCurrentExchangeInfo] =
     useState<ExchangeInfo>();
   const [currentTickerPrice, setCurrentTickerPrice] = useState<TickerPrice>();
@@ -28,9 +33,15 @@ const CryptoDetail = () => {
     useState<TickerPriceChange>();
   const [currentTickerSymbol, setCurrentTickerSymbol] = useState<string>("");
 
-  const [currentChartInterval, setCurrentChartInterval] = useState<number>(1);
+  const [currentChartInterval, setCurrentChartInterval] =
+    useState<ChartInterval>("1s");
   const [currentPriceChart, setCurrentPriceChart] = useState<any[]>([]);
   const [currentVolumeChart, setCurrentVolumeChart] = useState<any[]>([]);
+
+  const [previousPrice, setPreviousPrice] = useState<number>(0);
+  const [fluctuationStatus, setFluctuationStatus] = useState<
+    "positive" | "neutral" | "negative"
+  >("neutral");
 
   const getExchangeInfo = useQuery<ExchangeInfo>({
     queryKey: ["getExchangeInfo", cryptoId],
@@ -53,31 +64,60 @@ const CryptoDetail = () => {
     staleTime: 1000 * 60 * 5,
   });
 
-  const getCoinChartQuery = useQuery({
-    queryKey: ["getCryptoChart", cryptoId, currentChartInterval],
+  const getIntervalStartTime = (interval: ChartInterval) => {
+    let startTimeAdjustment = 0;
+
+    if (interval === "1s") {
+      startTimeAdjustment = 1000 * 60;
+    } else if (interval === "1m") {
+      startTimeAdjustment = 1000 * 60 * 60;
+    } else if (interval === "5m") {
+      startTimeAdjustment = 1000 * 60 * 60 * 4;
+    } else if (interval === "1M") {
+      startTimeAdjustment = 1000 * 60 * 60 * 24 * 7;
+    } else if (interval === "1w") {
+      startTimeAdjustment = 1000 * 60 * 60 * 24 * 30 * 6;
+    } else if (interval === "1d") {
+      startTimeAdjustment = 1000 * 60 * 60 * 24 * 30 * 3;
+    }
+
+    const currentTime = new Date().getTime();
+
+    return currentTime - startTimeAdjustment;
+  };
+
+  const getRefetchInterval = (interval: ChartInterval) => {
+    if (interval === "1s") {
+      return 1000;
+    } else if (interval === "1m") {
+      return 1000 * 60;
+    } else {
+      return false;
+    }
+  };
+
+  const getKlineCandleSticks = useQuery({
+    queryKey: ["getKlineCandleSticks", cryptoId, currentChartInterval],
     queryFn: async () => {
       const response = await axios.get(
-        process.env.EXPO_PUBLIC_GECKCO_API_URL +
-          `/coins/${cryptoId}/market_chart`,
+        process.env.EXPO_PUBLIC_BINANCE_API_URL + `/api/v3/klines`,
         {
           params: {
-            vs_currency: "usd",
-            days: currentChartInterval,
-          },
-          headers: {
-            "Accept-Encoding": "gzip",
-            Authorization: "Bearer " + process.env.EXPO_PUBLIC_COINCAP_API_KEY,
+            startTime: getIntervalStartTime(currentChartInterval),
+            symbol: cryptoId,
+            interval: currentChartInterval,
           },
         },
       );
 
-      setCurrentPriceChart(convertToChartValue(response.data.prices));
-      setCurrentVolumeChart(convertToChartValue(response.data.total_volumes));
+      setCurrentPriceChart(convertToChartValue(response.data));
+      setCurrentVolumeChart(convertToChartValue(response.data));
 
-      return response.data.prices;
+      return response.data;
     },
     retry: 1,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
+    refetchInterval: getRefetchInterval(currentChartInterval),
   });
 
   const getTickerPrice = useQuery({
@@ -92,12 +132,22 @@ const CryptoDetail = () => {
         },
       );
 
+      if (Number(response.data.price) > previousPrice) {
+        setFluctuationStatus("positive");
+      } else if (Number(response.data.price) < previousPrice) {
+        setFluctuationStatus("negative");
+      } else {
+        setFluctuationStatus("neutral");
+      }
+      setPreviousPrice(Number(response.data.price));
+
       setCurrentTickerPrice(response.data);
 
       return response.data;
     },
     retry: 1,
     staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000,
   });
 
   const getTickerPriceChange = useQuery({
@@ -134,34 +184,21 @@ const CryptoDetail = () => {
     if (!prices) return [];
     return prices.map((price) => ({
       timestamp: price[0],
-      value: price[1],
+      open: price[1],
+      high: price[2],
+      low: price[3],
+      close: price[4],
     }));
   };
 
-  const handlePressInterval = (interval: "1d" | "1w" | "1m" | "6m" | "1y") => {
-    switch (interval) {
-      case "1d":
-        setCurrentChartInterval(1);
-        break;
-      case "1w":
-        setCurrentChartInterval(7);
-        break;
-      case "6m":
-        setCurrentChartInterval(180);
-        break;
-      case "1m":
-        setCurrentChartInterval(30);
-        break;
-      case "1y":
-        setCurrentChartInterval(365);
-        break;
-      default:
-        setCurrentChartInterval(1);
-    }
+  const handlePressInterval = (interval: ChartInterval) => {
+    setCurrentChartInterval(interval);
   };
 
   const handlePressTrade = () => {
-    router.navigate(`/(tabs)/(trades)/${currentExchangeInfo?.symbols?.[0]?.symbol}`);
+    router.navigate(
+      `/(tabs)/(trades)/${currentExchangeInfo?.symbols?.[0]?.symbol}`,
+    );
   };
 
   return (
@@ -177,11 +214,7 @@ const CryptoDetail = () => {
       <ContentContainer>
         <PriceContainer>
           <CurrentPriceContainer>
-            <CurrentPriceText
-              isPositive={
-                Number(currentTickerPriceChange?.priceChangePercent) > 0
-              }
-            >
+            <CurrentPriceText fluctuationStatus={fluctuationStatus}>
               {Number(currentTickerPrice?.price)?.toFixed(4)}
             </CurrentPriceText>
             <SubPriceContainer>
@@ -233,93 +266,48 @@ const CryptoDetail = () => {
           </PriceSummaryContainer>
         </PriceContainer>
         <IntervalSelectContainer>
+          <IntervalButton onPress={() => handlePressInterval("1s")}>
+            <IntervalButtonText isSelected={currentChartInterval === "1s"}>
+              1s
+            </IntervalButtonText>
+          </IntervalButton>
           <IntervalButton onPress={() => handlePressInterval("1d")}>
-            <IntervalButtonText isSelected={currentChartInterval === 1}>
+            <IntervalButtonText isSelected={currentChartInterval === "1d"}>
               1D
             </IntervalButtonText>
           </IntervalButton>
           <IntervalButton onPress={() => handlePressInterval("1w")}>
-            <IntervalButtonText isSelected={currentChartInterval === 7}>
+            <IntervalButtonText isSelected={currentChartInterval === "1w"}>
               1W
             </IntervalButtonText>
           </IntervalButton>
           <IntervalButton onPress={() => handlePressInterval("1m")}>
-            <IntervalButtonText isSelected={currentChartInterval === 30}>
+            <IntervalButtonText isSelected={currentChartInterval === "1m"}>
+              1m
+            </IntervalButtonText>
+          </IntervalButton>
+          <IntervalButton onPress={() => handlePressInterval("5m")}>
+            <IntervalButtonText isSelected={currentChartInterval === "5m"}>
+              5m
+            </IntervalButtonText>
+          </IntervalButton>
+          <IntervalButton onPress={() => handlePressInterval("1M")}>
+            <IntervalButtonText isSelected={currentChartInterval === "1M"}>
               1M
-            </IntervalButtonText>
-          </IntervalButton>
-          <IntervalButton onPress={() => handlePressInterval("6m")}>
-            <IntervalButtonText isSelected={currentChartInterval === 180}>
-              6M
-            </IntervalButtonText>
-          </IntervalButton>
-          <IntervalButton onPress={() => handlePressInterval("1y")}>
-            <IntervalButtonText isSelected={currentChartInterval === 365}>
-              1Y
             </IntervalButtonText>
           </IntervalButton>
         </IntervalSelectContainer>
         {currentPriceChart.length !== 0 && (
-          <LineChart.Provider data={currentPriceChart}>
-            <LineChart height={Dimensions.get("window").height * 0.4}>
-              <LineChart.Path color={Colors.light.tint} width={1}>
-                <LineChart.Gradient color={Colors.light.secondaryTint} />
-                <LineChart.HorizontalLine
-                  at={{
-                    value: Number(currentTickerPrice?.price),
-                  }}
-                />
-              </LineChart.Path>
-              <LineChart.CursorCrosshair>
-                <LineChart.Tooltip
-                  style={{
-                    paddingHorizontal: 6,
-                    backgroundColor: "#e8e8e8",
-                    borderRadius: 6,
-                    alignSelf: "flex-start",
-                  }}
-                  textStyle={{
-                    fontSize: 12,
-                  }}
-                />
-                <LineChart.Tooltip position="bottom">
-                  <LineChart.DatetimeText />
-                </LineChart.Tooltip>
-              </LineChart.CursorCrosshair>
-            </LineChart>
-          </LineChart.Provider>
-        )}
-
-        {currentVolumeChart.length !== 0 && (
-          <LineChart.Provider data={currentVolumeChart}>
-            <LineChart
-              style={{
-                borderBottomWidth: 1,
-                borderColor: "#a1a1a1",
-              }}
-              height={Dimensions.get("window").height * 0.1}
-            >
-              <LineChart.Path color={"#a1a1a1"} width={1}>
-                <LineChart.Gradient color={"#a1a1a1"} />
-              </LineChart.Path>
-              <LineChart.CursorCrosshair>
-                <LineChart.Tooltip
-                  style={{
-                    paddingHorizontal: 6,
-                    backgroundColor: "#e8e8e8",
-                    borderRadius: 6,
-                    alignSelf: "flex-start",
-                  }}
-                  textStyle={{
-                    fontSize: 12,
-                  }}
-                />
-                <LineChart.Tooltip position="bottom">
-                  <LineChart.DatetimeText />
-                </LineChart.Tooltip>
-              </LineChart.CursorCrosshair>
-            </LineChart>
-          </LineChart.Provider>
+          <CandlestickChart.Provider data={currentPriceChart}>
+            <CandlestickChart height={Dimensions.get("window").height * 0.3}>
+              <CandlestickChart.Candles useAnimations={false} />
+              <CandlestickChart.Crosshair>
+                <CandlestickChart.Tooltip />
+              </CandlestickChart.Crosshair>
+            </CandlestickChart>
+            <CandlestickChart.PriceText />
+            <CandlestickChart.DatetimeText />
+          </CandlestickChart.Provider>
         )}
         <OptionButtonContainer>
           <OptionButton type="buy" onPress={handlePressTrade}>
@@ -376,11 +364,17 @@ const PriceContainer = styled.View`
   justify-content: space-between;
 `;
 
-const CurrentPriceText = styled.Text<{ isPositive?: boolean }>`
+const CurrentPriceText = styled.Text<{
+  fluctuationStatus: "positive" | "neutral" | "negative";
+}>`
   font-size: 24px;
   font-weight: bold;
   color: ${(props) =>
-    props.isPositive ? Colors.positiveCandleColor : Colors.negativeCandleColor};
+    props.fluctuationStatus === "positive"
+      ? Colors.positiveCandleColor
+      : props.fluctuationStatus === "negative"
+        ? Colors.negativeCandleColor
+        : "black"};
 `;
 
 const SubPriceContainer = styled.View`
